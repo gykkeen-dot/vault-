@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import FeatureScreen from '../components/FeatureScreen';
-import BrandChips from '../components/BrandChips';
-import { BRANDS } from '../config/brands';
+import FeatureScreen from '../../components/FeatureScreen';
+import BrandChips from '../../components/BrandChips';
+import { BRANDS } from '../../config/brands';
 
 export default function OutfitsScreen() {
   const [brand, setBrand] = useState(null);

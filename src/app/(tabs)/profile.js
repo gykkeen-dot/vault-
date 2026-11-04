@@ -1,8 +1,8 @@
 import React from 'react';
 import { ScrollView, View } from 'react-native';
-import { Heading, Note, GlassPill } from '../components/Glass';
-import { isSupabaseConfigured } from '../lib/supabase';
-import { FEATURES, LIMITS } from '../config/limits';
+import { Heading, Note, GlassPill } from '../../components/Glass';
+import { isSupabaseConfigured } from '../../lib/supabase';
+import { FEATURES, LIMITS } from '../../config/limits';
 
 export default function ProfileScreen() {
   return (

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import FeatureScreen from '../components/FeatureScreen';
-import BrandChips from '../components/BrandChips';
-import { Note } from '../components/Glass';
-import { LEGIT_BRANDS } from '../config/brands';
+import FeatureScreen from '../../components/FeatureScreen';
+import BrandChips from '../../components/BrandChips';
+import { Note } from '../../components/Glass';
+import { LEGIT_BRANDS } from '../../config/brands';
 
 export default function LegitScreen() {
   const [brand, setBrand] = useState(null);

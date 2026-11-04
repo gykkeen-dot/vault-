@@ -12,6 +12,7 @@
 Этап 0: каркас (4 вкладки, бренды, лимиты, заготовка Supabase). Полный план: docs/PLAN.md.
 
 ## Структура
+- `src/app/`: экраны и навигация (Expo Router; вкладки в `src/app/(tabs)/`)
 - `src/config/brands.js`: бренды (legit: true — первая версия легитчека)
 - `src/config/limits.js`: лимиты Free / Premium
 - `src/lib/supabase.js`: клиент (ключи из env); `src/lib/usage.js`: дневные счётчики (пока локально)

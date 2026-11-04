@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextInput, StyleSheet } from 'react-native';
-import FeatureScreen from '../components/FeatureScreen';
-import { colors, fonts, radius } from '../theme';
+import FeatureScreen from '../../components/FeatureScreen';
+import { colors, fonts, radius } from '../../theme';
 
 export default function SearchScreen() {
   const [q, setQ] = useState('');
