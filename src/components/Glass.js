@@ -5,10 +5,17 @@ import { colors, fonts, radius } from '../theme';
 export function GlassPill({ children, style }) {
   return <View style={[s.pill, style]}>{children}</View>;
 }
-export function PillButton({ label, onPress, style, tone = 'glass' }) {
+// Чёрная «лаковая» кнопка: тёмное тело, светлая кромка сверху, тонкое внутреннее кольцо, мягкая тень.
+export function PillButton({ label, onPress, style, tone = 'solid' }) {
+  const solid = tone === 'solid';
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [s.btn, tone === 'solid' && s.solid, pressed && { opacity: 0.7 }, style]}>
-      <Text style={[s.btnText, tone === 'solid' && { color: '#000' }]}>{label.toUpperCase()}</Text>
+    <Pressable onPress={onPress} style={({ pressed }) => [s.shadow, solid && s.shadowSolid, pressed && { transform: [{ translateY: 1 }], opacity: 0.92 }, style]}>
+      <View style={[s.btn, solid ? s.solid : s.ghost]}>
+        {solid && <View pointerEvents="none" style={s.ring} />}
+        {solid && <View pointerEvents="none" style={s.gloss} />}
+        <Text style={[s.btnText, solid ? { color: colors.onAccent } : { color: colors.text }]}>{label.toUpperCase()}</Text>
+        <View style={[s.rule, { backgroundColor: solid ? colors.onAccent : colors.text }]} />
+      </View>
     </Pressable>
   );
 }
@@ -20,9 +27,15 @@ export function Note({ children, style }) {
 }
 const s = StyleSheet.create({
   pill: { backgroundColor: colors.glass, borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill },
-  btn: { backgroundColor: colors.glassStrong, borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, paddingVertical: 14, paddingHorizontal: 28, alignItems: 'center' },
-  solid: { backgroundColor: colors.accent, borderColor: colors.accent },
-  btnText: { color: colors.text, fontFamily: fonts.mono, letterSpacing: 1.2, fontSize: 13 },
+  shadow: { borderRadius: radius.pill },
+  shadowSolid: { shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, paddingVertical: 19, paddingHorizontal: 24, borderRadius: radius.pill, overflow: 'hidden' },
+  solid: { backgroundColor: '#0A0A0A' },
+  ghost: { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border },
+  ring: { position: 'absolute', top: 4, left: 4, right: 4, bottom: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  gloss: { position: 'absolute', top: 0, left: 0, right: 0, height: '46%', backgroundColor: 'rgba(255,255,255,0.08)' },
+  btnText: { fontFamily: fonts.monoBold, letterSpacing: 3.5, fontSize: 11 },
+  rule: { width: 22, height: 1, opacity: 0.7 },
   heading: { color: colors.text, fontFamily: fonts.monoBold, fontSize: 20, letterSpacing: 0.5, lineHeight: 28 },
-  note: { color: colors.dim, fontFamily: fonts.mono, fontSize: 12, lineHeight: 18 },
+  note: { color: colors.dim, fontFamily: fonts.mono, fontSize: 12, lineHeight: 19 },
 });

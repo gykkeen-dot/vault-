@@ -13,5 +13,5 @@ export default function SearchScreen() {
   );
 }
 const s = StyleSheet.create({
-  input: { color: colors.text, fontFamily: fonts.mono, fontSize: 14, borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, paddingVertical: 14, paddingHorizontal: 20, backgroundColor: colors.glass },
+  input: { color: colors.text, fontFamily: fonts.mono, fontSize: 14, borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, paddingVertical: 14, paddingHorizontal: 20, backgroundColor: colors.bg },
 });

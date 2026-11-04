@@ -26,12 +26,12 @@ export default function FeatureScreen({ feature, headline, blurb, cta, children 
       <GlassPill style={s.limit}>
         <Note>{f.title}: {used}/{limit} сегодня · Free: {f.freeNote} · Premium: {f.premiumNote}</Note>
       </GlassPill>
-      <PillButton label={cta} onPress={run} tone="solid" style={{ marginTop: 20 }} />
+      <PillButton label={cta} onPress={run} style={{ marginTop: 22 }} />
       {!!msg && <Note style={{ marginTop: 14, color: colors.warn }}>{msg}</Note>}
     </ScrollView>
   );
 }
 const s = StyleSheet.create({
   body: { paddingHorizontal: 20, paddingBottom: 140 },
-  limit: { marginTop: 20, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 20 },
+  limit: { marginTop: 20, backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 20 },
 });

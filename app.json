@@ -5,8 +5,8 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#000000",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFFFFF",
     "ios": { "supportsTablet": false, "bundleIdentifier": "app.vault.archive" },
     "android": {
       "package": "app.vault.archive",

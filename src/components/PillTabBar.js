@@ -17,9 +17,9 @@ export default function PillTabBar({ tabs, active, onChange }) {
 }
 const s = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16, bottom: 22 },
-  bar: { flexDirection: 'row', backgroundColor: 'rgba(40,40,42,0.92)', borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, padding: 6 },
-  item: { flex: 1, paddingVertical: 12, borderRadius: radius.pill, alignItems: 'center' },
-  itemOn: { backgroundColor: colors.glassStrong },
-  label: { color: colors.faint, fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.8 },
-  labelOn: { color: colors.text },
+  bar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.92)', borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, padding: 6, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
+  item: { flex: 1, paddingVertical: 13, borderRadius: radius.pill, alignItems: 'center' },
+  itemOn: { backgroundColor: colors.accent },
+  label: { color: colors.faint, fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1.2 },
+  labelOn: { color: colors.onAccent },
 });

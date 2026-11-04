@@ -1,17 +1,16 @@
-// Визуальный язык по референсам: чёрный фон, матовое «стекло», моно-заголовки, капсулы.
+// Светлая тема: белый фон, тонкие линии, капсулы, чёрные «лаковые» кнопки, моно-заголовки.
 export const colors = {
-  bg: '#000000',
-  surface: '#0E0E0F',
-  glass: 'rgba(255,255,255,0.08)',
-  glassStrong: 'rgba(255,255,255,0.14)',
-  border: 'rgba(255,255,255,0.16)',
-  text: '#F4F4F2',
-  dim: 'rgba(244,244,242,0.55)',
-  faint: 'rgba(244,244,242,0.32)',
-  accent: '#E8E4DA', // тёплый «архивный» белый
-  ok: '#7BD88F',
-  warn: '#F2C14E',
-  bad: '#F2685B',
+  bg: '#FFFFFF',
+  surface: '#F6F6F5',
+  glass: '#FFFFFF',
+  glassStrong: '#F0F0EE',
+  border: 'rgba(10,10,10,0.12)',
+  text: '#0A0A0A',
+  dim: 'rgba(10,10,10,0.58)',
+  faint: 'rgba(10,10,10,0.38)',
+  accent: '#0A0A0A', // чёрный лак: основные кнопки и выбранные элементы
+  onAccent: '#FFFFFF',
+  warn: '#8A5D00',
 };
 export const fonts = { mono: 'JetBrainsMono_400Regular', monoBold: 'JetBrainsMono_700Bold' };
 export const radius = { pill: 999, card: 22, chip: 18 };
