@@ -6,17 +6,28 @@ import { consume, getUsed } from '../lib/usage';
 import { colors } from '../theme';
 
 // Общий каркас вкладки: заголовок, счётчик лимита, кнопка действия (заглушка до этапов 1–3).
-export default function FeatureScreen({ feature, headline, blurb, cta, children }) {
+const LIMIT_MSG = 'Лимит на сегодня исчерпан. Premium снимает ограничения.';
+
+export default function FeatureScreen({ feature, headline, blurb, cta, children, onRun }) {
   const f = FEATURES[feature];
   const limit = LIMITS.free[feature];
   const [used, setUsed] = useState(0);
   const [msg, setMsg] = useState('');
   useEffect(() => { getUsed(feature).then(setUsed); }, [feature]);
 
-  const run = async () => {
+  const spend = async () => {
     const r = await consume(feature, 'free');
     setUsed(r.used);
-    setMsg(r.ok ? 'Скоро: функция подключается на следующем этапе.' : 'Лимит на сегодня исчерпан. Premium снимает ограничения.');
+    return r.ok;
+  };
+  const run = async () => {
+    setMsg('');
+    if (!onRun) {
+      setMsg((await spend()) ? 'Скоро: функция подключается на следующем этапе.' : LIMIT_MSG);
+      return;
+    }
+    if (limit !== -1 && (await getUsed(feature)) >= limit) { setMsg(LIMIT_MSG); return; }
+    setMsg(await onRun(spend));
   };
   return (
     <ScrollView contentContainerStyle={s.body}>
