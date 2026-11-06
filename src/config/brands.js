@@ -1,4 +1,4 @@
-// legit: true — бренды первой версии легитчека (больше всего подделок и открытых материалов).
+// legit: true = brands in the first legit-check release (most fakes and most public reference material).
 export const BRANDS = [
   { id: 'rick-owens', name: 'Rick Owens', legit: true },
   { id: 'balenciaga', name: 'Balenciaga', legit: true },

@@ -5,8 +5,8 @@ import { FEATURES, LIMITS } from '../config/limits';
 import { consume, getUsed } from '../lib/usage';
 import { colors } from '../theme';
 
-// Общий каркас вкладки: заголовок, счётчик лимита, кнопка действия (заглушка до этапов 1–3).
-const LIMIT_MSG = 'Лимит на сегодня исчерпан. Premium снимает ограничения.';
+// Shared tab layout: heading, usage counter, action button (placeholder until stages 1–3).
+const LIMIT_MSG = 'Daily limit reached. Premium removes the limits.';
 
 export default function FeatureScreen({ feature, headline, blurb, cta, children, onRun }) {
   const f = FEATURES[feature];
@@ -23,7 +23,7 @@ export default function FeatureScreen({ feature, headline, blurb, cta, children,
   const run = async () => {
     setMsg('');
     if (!onRun) {
-      setMsg((await spend()) ? 'Скоро: функция подключается на следующем этапе.' : LIMIT_MSG);
+      setMsg((await spend()) ? 'Coming soon: this feature arrives in a later stage.' : LIMIT_MSG);
       return;
     }
     if (limit !== -1 && (await getUsed(feature)) >= limit) { setMsg(LIMIT_MSG); return; }
@@ -35,7 +35,7 @@ export default function FeatureScreen({ feature, headline, blurb, cta, children,
       <Note style={{ marginTop: 8 }}>{blurb}</Note>
       <View style={{ marginTop: 20 }}>{children}</View>
       <GlassPill style={s.limit}>
-        <Note>{f.title}: {used}/{limit} сегодня · Free: {f.freeNote} · Premium: {f.premiumNote}</Note>
+        <Note>{f.title}: {used}/{limit} today · Free: {f.freeNote} · Premium: {f.premiumNote}</Note>
       </GlassPill>
       <PillButton label={cta} onPress={run} style={{ marginTop: 22 }} />
       {!!msg && <Note style={{ marginTop: 14, color: colors.warn }}>{msg}</Note>}

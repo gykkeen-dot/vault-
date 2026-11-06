@@ -7,10 +7,10 @@ import { LEGIT_BRANDS } from '../../config/brands';
 export default function LegitScreen() {
   const [brand, setBrand] = useState(null);
   return (
-    <FeatureScreen feature="legit" headline="Легитчек" cta="Проверить"
-      blurb="Вердикт с процентом уверенности и разбором, что не сошлось. Это вероятностная оценка, а не гарантия подлинности.">
+    <FeatureScreen feature="legit" headline="Legit Check" cta="Check"
+      blurb="A verdict with a confidence score and a breakdown of what did not match. This is a probability estimate, not a guarantee of authenticity.">
       <BrandChips brands={LEGIT_BRANDS} selected={brand} onSelect={setBrand} />
-      <Note style={{ marginTop: 12 }}>Первая версия: Rick Owens, Balenciaga, Gucci. Остальные бренды добавим позже.</Note>
+      <Note style={{ marginTop: 12 }}>First release: Rick Owens, Balenciaga, Gucci. More brands later.</Note>
     </FeatureScreen>
   );
 }

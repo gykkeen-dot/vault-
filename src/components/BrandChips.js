@@ -19,5 +19,5 @@ export default function BrandChips({ brands, selected, onSelect }) {
 const s = StyleSheet.create({
   chip: { backgroundColor: colors.glass, borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, paddingVertical: 14, paddingHorizontal: 18, minWidth: 96 },
   on: { backgroundColor: colors.accent, borderColor: colors.accent },
-  text: { color: colors.text, fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.6 },
+  text: { color: colors.text, fontFamily: fonts.display, fontSize: 10, letterSpacing: 0.8 },
 });

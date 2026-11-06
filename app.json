@@ -30,7 +30,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "VAULT использует фото, чтобы определить бренд, коллекцию и сезон вещи."
+          "photosPermission": "VAULT uses your photos to identify the brand, collection and season of a piece."
         }
       ]
     ]

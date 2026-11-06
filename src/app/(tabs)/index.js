@@ -12,19 +12,19 @@ export default function OutfitsScreen() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
-  // spend() списывает попытку только после того, как фото выбрано. Возвращает текст статуса.
+  // spend() uses up one attempt only after a photo is picked. Returns a status message.
   const onRun = async (spend) => {
     setError(''); setResult(null);
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'], quality: 0.6, base64: true, allowsEditing: false,
     });
-    if (picked.canceled) return 'Фото не выбрано.';
+    if (picked.canceled) return 'No photo selected.';
     const asset = picked.assets[0];
-    if (!(await spend())) return 'Лимит на сегодня исчерпан. Premium снимает ограничения.';
+    if (!(await spend())) return 'Daily limit reached. Premium removes the limits.';
     setPhoto(asset.uri);
     try {
       const r = await analyzeItem({ base64: asset.base64, mimeType: asset.mimeType || 'image/jpeg' });
-      if (r.limit) return 'Лимит на сегодня исчерпан. Premium снимает ограничения.';
+      if (r.limit) return 'Daily limit reached. Premium removes the limits.';
       setResult(r);
       return '';
     } catch (e) {
@@ -34,17 +34,17 @@ export default function OutfitsScreen() {
   };
 
   return (
-    <FeatureScreen feature="outfit" headline="Собери аутфит" cta="Загрузить вещь" onRun={onRun}
-      blurb="Загрузи фото вещи: определим бренд, коллекцию и сезон, затем подберём образ по правилам цвета, силуэта и пропорций.">
+    <FeatureScreen feature="outfit" headline="Build an outfit" cta="Upload a piece" onRun={onRun}
+      blurb="Upload a photo of a piece: we identify the brand, collection and season, then build a look using rules of colour, silhouette and proportion.">
       {photo && <Image source={{ uri: photo }} style={s.photo} contentFit="cover" transition={150} />}
       {result && (
         <View style={s.card}>
-          <Row k="Бренд" v={result.brand} />
-          <Row k="Коллекция" v={result.collection} />
-          <Row k="Сезон" v={result.season} />
-          <Row k="Уверенность" v={`${Math.round((result.confidence ?? 0) * 100)}%`} />
+          <Row k="Brand" v={result.brand} />
+          <Row k="Collection" v={result.collection} />
+          <Row k="Season" v={result.season} />
+          <Row k="Confidence" v={`${Math.round((result.confidence ?? 0) * 100)}%`} />
           {!!result.note && <Note style={{ marginTop: 10 }}>{result.note}</Note>}
-          <Note style={{ marginTop: 10 }}>Оценка вероятностная, не гарантия.</Note>
+          <Note style={{ marginTop: 10 }}>A probability estimate, not a guarantee.</Note>
         </View>
       )}
       {!!error && <Note style={{ color: colors.warn }}>{error}</Note>}

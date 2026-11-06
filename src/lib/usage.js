@@ -1,4 +1,4 @@
-// Дневные счётчики лимитов. Пока локально (AsyncStorage); на этапе 2 переедет на сервер (Supabase), чтобы не обходилось.
+// Daily usage counters. Local for now (AsyncStorage); moves to the server (Supabase) in stage 2 so it cannot be bypassed.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LIMITS } from '../config/limits';
 

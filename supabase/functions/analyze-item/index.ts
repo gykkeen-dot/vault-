@@ -1,11 +1,11 @@
-// Edge Function: распознаёт бренд, коллекцию и сезон по фото. НЕ РАЗВЁРНУТА И НЕ ПРОТЕСТИРОВАНА.
-// Перед деплоем: supabase secrets set ANTHROPIC_API_KEY=... ; supabase functions deploy analyze-item
-// Проверка JWT включена по умолчанию, анонимные вызовы отклоняются.
+// Edge Function: identifies brand, collection and season from a photo. NOT DEPLOYED AND NOT TESTED.
+// Before deploying: supabase secrets set ANTHROPIC_API_KEY=... ; supabase functions deploy analyze-item
+// JWT verification is on by default, unauthenticated calls are rejected.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const FREE_DAILY_LIMIT = 5;
 const MODEL = Deno.env.get('ANALYZE_MODEL') ?? 'claude-sonnet-5-5';
-const MAX_IMAGE_CHARS = 7_000_000; // ~5 МБ в base64
+const MAX_IMAGE_CHARS = 7_000_000; // ~5 MB in base64
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
   if (typeof image !== 'string' || image.length > MAX_IMAGE_CHARS) return json({ error: 'bad_image' }, 400);
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) return json({ error: 'bad_type' }, 400);
 
-  // Лимит считается на сервере: plan читается из profiles, счётчик растёт только через consume_usage.
+  // The limit is enforced on the server: plan is read from profiles, the counter only grows through consume_usage.
   const { data: prof } = await supabase.from('profiles').select('plan').eq('id', u.user.id).single();
   if (prof?.plan !== 'premium') {
     const { data: count, error } = await supabase.rpc('consume_usage', { p_feature: 'outfit' });
@@ -37,10 +37,10 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 400,
-      system: 'Ты определяешь вещи высокой моды по фото. Отвечай только JSON: {"brand":string|null,"collection":string|null,"season":string|null,"confidence":number 0..1}. Если не уверен, ставь null и низкую уверенность. Не выдумывай.',
+      system: 'You identify high-fashion pieces from photos. Reply with JSON only: {"brand":string|null,"collection":string|null,"season":string|null,"confidence":number 0..1}. If unsure, use null and a low confidence. Do not invent.',
       messages: [{ role: 'user', content: [
         { type: 'image', source: { type: 'base64', media_type: mimeType, data: image } },
-        { type: 'text', text: 'Определи бренд, коллекцию и сезон (например FW08).' },
+        { type: 'text', text: 'Identify the brand, collection and season (for example FW08).' },
       ] }],
     }),
   });

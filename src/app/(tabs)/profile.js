@@ -7,12 +7,12 @@ import { FEATURES, LIMITS } from '../../config/limits';
 export default function ProfileScreen() {
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}>
-      <Heading>Профиль</Heading>
-      <Note style={{ marginTop: 8 }}>Тариф: Free. Supabase: {isSupabaseConfigured ? 'подключён' : 'не настроен (нужен anon-ключ)'}.</Note>
+      <Heading>Profile</Heading>
+      <Note style={{ marginTop: 8 }}>Plan: Free. Supabase: {isSupabaseConfigured ? 'connected' : 'not configured (anon key needed)'}.</Note>
       <View style={{ marginTop: 20, gap: 10 }}>
         {Object.entries(FEATURES).map(([k, f]) => (
           <GlassPill key={k} style={{ padding: 16, borderRadius: 20 }}>
-            <Note>{f.title}: Free {LIMITS.free[k]}/день · Premium: {f.premiumNote}</Note>
+            <Note>{f.title}: Free {LIMITS.free[k]}/day · Premium: {f.premiumNote}</Note>
           </GlassPill>
         ))}
       </View>

@@ -6,13 +6,13 @@ import PillTabBar from '../../components/PillTabBar';
 import { colors, fonts } from '../../theme';
 
 const TABS = [
-  { name: 'index', label: 'Аутфиты' },
-  { name: 'search', label: 'Поиск' },
-  { name: 'legit', label: 'Легитчек' },
-  { name: 'profile', label: 'Профиль' },
+  { name: 'index', label: 'Outfits' },
+  { name: 'search', label: 'Search' },
+  { name: 'legit', label: 'Legit Check' },
+  { name: 'profile', label: 'Profile' },
 ];
 
-// Свой капсульный бар поверх навигатора Expo Router: состояние и переходы остаются у роутера.
+// Custom pill bar on top of the Expo Router navigator: state and transitions stay with the router.
 function TabBar({ state, navigateToTab }) {
   const active = state.routes[state.index].name;
   return (
@@ -43,5 +43,5 @@ export default function TabsLayout() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   top: { marginHorizontal: 20, marginVertical: 14, paddingVertical: 14, borderRadius: 999, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
-  logo: { color: colors.text, fontFamily: fonts.monoBold, fontSize: 18, letterSpacing: 8 },
+  logo: { color: colors.text, fontFamily: fonts.display, fontSize: 20, letterSpacing: 8 },
 });

@@ -20,6 +20,6 @@ const s = StyleSheet.create({
   bar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.92)', borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, padding: 6, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 10 },
   item: { flex: 1, paddingVertical: 13, borderRadius: radius.pill, alignItems: 'center' },
   itemOn: { backgroundColor: colors.accent },
-  label: { color: colors.faint, fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1.2 },
+  label: { color: colors.faint, fontFamily: fonts.display, fontSize: 9, letterSpacing: 0.8 },
   labelOn: { color: colors.onAccent },
 });
