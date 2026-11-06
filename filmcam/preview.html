@@ -1,0 +1,176 @@
+<title>FilmCam Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: фото сверху, под ним панель ползунков в две колонки на широком экране */
+:root{--bg:#0d0e0f;--panel:#17191a;--fg:#ece8e1;--mute:#8d9190;--line:#2a2d2e;--accent:#e8b04a;color-scheme:dark;--font:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--font);padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font:500 13px var(--mono);letter-spacing:.18em;text-transform:uppercase;margin:0;color:var(--mute)}
+.stage{background:#000;border-radius:6px;overflow:hidden;display:flex;justify-content:center}
+canvas{max-width:100%;max-height:70vh;display:block}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button,label.btn{font:500 14px var(--font);background:var(--accent);color:#17120a;border:0;border-radius:999px;padding:10px 18px;cursor:pointer}
+button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+button:focus-visible,input:focus-visible+span{outline:2px solid var(--fg);outline-offset:2px}
+.tg{display:flex;gap:6px;align-items:center;color:var(--fg)}
+.hint{color:var(--mute);font-size:13px;margin:0}
+.panel{background:var(--panel);border-radius:8px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 24px}
+.row{display:grid;grid-template-columns:92px minmax(0,1fr) 40px;gap:8px;align-items:center}
+.row .v{font:12px var(--mono);color:var(--mute);text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+#file{display:none}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<div class="wrap">
+  <h1>FilmCam · этап 1 · Bleach Bypass</h1>
+  <div class="stage"><canvas id="c"></canvas></div>
+  <div class="bar">
+    <label class="btn" for="file">Выбрать своё фото</label><input type="file" id="file" accept="image/*">
+    <label class="tg"><input type="checkbox" id="on" checked> Bleach Bypass</label>
+    <button class="ghost" id="reset">Сброс</button>
+  </div>
+  <p class="hint" id="hint">Сейчас показан пример. Живая камера в этой версии недоступна, она работает в самом приложении (папка filmcam/).</p>
+  <div class="panel" id="sliders"></div>
+</div>
+<script>
+const VERT=`#version 300 es
+in vec2 aPos;
+out vec2 vUv;
+void main(){ vUv = aPos*0.5+0.5; gl_Position = vec4(aPos,0.,1.); }`;
+const FRAG=`#version 300 es
+precision highp float;
+in vec2 vUv;
+out vec4 outColor;
+uniform sampler2D uTex;
+uniform sampler2D uNoise;
+uniform vec2 uTexel;      // 1/размер видео
+uniform vec2 uRes;        // размер канваса
+uniform vec2 uGrainOff;   // сдвиг шума по времени
+uniform float uEffect;    // 1 = Bleach Bypass включён
+uniform float uIntensity, uContrast, uBrightness, uSaturation, uTemperature, uTint;
+uniform float uHighlights, uShadows, uSharpness, uBlur, uGrain, uGrainSize, uVignette, uFade;
+
+float luma(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+
+vec3 bleachBypass(vec3 c){
+  float l = luma(c);
+  float k = clamp((l - 0.45) * 10.0, 0.0, 1.0);
+  vec3 dark  = 2.0 * c * l;
+  vec3 light = 1.0 - 2.0 * (1.0 - c) * (1.0 - l);
+  vec3 ov = mix(dark, light, k);
+  vec3 desat = mix(vec3(l), c, 0.45);
+  return mix(desat, ov, 0.7) * 1.05;
+}
+
+void main(){
+  vec3 c = texture(uTex, vUv).rgb;
+
+  // Blur / Sharpness: 3x3 только если нужны
+  if (uBlur > 0.001 || uSharpness > 0.001) {
+    float r = 1.0 + uBlur * 6.0;
+    vec3 s = vec3(0.0);
+    for (int y = -1; y <= 1; y++)
+      for (int x = -1; x <= 1; x++)
+        s += texture(uTex, vUv + vec2(float(x), float(y)) * uTexel * r).rgb;
+    s /= 9.0;
+    if (uBlur > 0.001) c = mix(c, s, clamp(uBlur * 2.0, 0.0, 1.0));
+    c += (c - s) * uSharpness * 2.0;
+  }
+
+  // Temperature / Tint
+  c.r += uTemperature * 0.12;  c.b -= uTemperature * 0.12;
+  c.g += uTint * 0.10;         c.r -= uTint * 0.04; c.b -= uTint * 0.04;
+
+  // Highlights / Shadows
+  float l0 = luma(c);
+  c += uHighlights * smoothstep(0.5, 1.0, l0) * 0.3;
+  c += uShadows * (1.0 - smoothstep(0.0, 0.5, l0)) * 0.3;
+
+  // Эффект
+  if (uEffect > 0.5) c = mix(c, bleachBypass(clamp(c, 0.0, 1.0)), uIntensity);
+
+  // Brightness / Contrast / Saturation
+  c += uBrightness * 0.5;
+  c = (c - 0.5) * (1.0 + uContrast) + 0.5;
+  float l1 = luma(c);
+  c = mix(vec3(l1), c, 1.0 + uSaturation);
+
+  // Fade (приподнятые чёрные)
+  c = c * (1.0 - uFade * 0.35) + uFade * 0.14;
+
+  // Vignette
+  vec2 d = vUv - 0.5;
+  c *= 1.0 - uVignette * smoothstep(0.25, 0.8, length(d * vec2(uRes.x / uRes.y, 1.0)));
+
+  // Grain из готовой текстуры (без random на пиксель)
+  if (uGrain > 0.001) {
+    float n = texture(uNoise, vUv * uRes / (256.0 * max(uGrainSize, 0.5)) + uGrainOff).r - 0.5;
+    float l2 = luma(c);
+    c += n * uGrain * 0.5 * (1.0 - pow(abs(l2 * 2.0 - 1.0), 2.0) * 0.6);
+  }
+
+  outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+}`;
+const SL=[['intensity','Intensity',0,1,1,'uIntensity'],['contrast','Contrast',-1,1,.15,'uContrast'],['brightness','Brightness',-1,1,0,'uBrightness'],['saturation','Saturation',-1,1,0,'uSaturation'],['temperature','Temperature',-1,1,0,'uTemperature'],['tint','Tint',-1,1,0,'uTint'],['highlights','Highlights',-1,1,0,'uHighlights'],['shadows','Shadows',-1,1,0,'uShadows'],['sharpness','Sharpness',0,1,.2,'uSharpness'],['blur','Blur',0,1,0,'uBlur'],['grain','Grain',0,1,.3,'uGrain'],['grainSize','Grain Size',.5,3,1.2,'uGrainSize'],['vignette','Vignette',0,1,.3,'uVignette'],['fade','Fade',0,1,.1,'uFade']];
+const st={};SL.forEach(s=>st[s[0]]=s[4]);
+const $=id=>document.getElementById(id), cv=$('c');
+const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true,antialias:false});
+let U={},src=null,tex,W=1,H=1;
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o}
+function init(){
+  const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,VERT));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,FRAG));gl.linkProgram(p);gl.useProgram(p);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  const l=gl.getAttribLocation(p,'aPos');gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0);
+  for(let i=0;i<gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);i++){const n=gl.getActiveUniform(p,i).name;U[n]=gl.getUniformLocation(p,n)}
+  tex=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);
+  [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]].forEach(a=>gl.texParameteri(gl.TEXTURE_2D,a[0],a[1]));
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  const d=new Uint8Array(65536);for(let i=0;i<d.length;i++)d[i]=Math.random()*256;
+  const n=gl.createTexture();gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,n);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,256,256,0,gl.RED,gl.UNSIGNED_BYTE,d);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
+  [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.REPEAT],[gl.TEXTURE_WRAP_T,gl.REPEAT]].forEach(a=>gl.texParameteri(gl.TEXTURE_2D,a[0],a[1]));
+  gl.uniform1i(U.uTex,0);gl.uniform1i(U.uNoise,1);
+}
+let pend=false;function render(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;draw()})}
+function draw(){
+  if(!src)return;
+  gl.viewport(0,0,W,H);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.uniform2f(U.uTexel,1/W,1/H);gl.uniform2f(U.uRes,W,H);gl.uniform2f(U.uGrainOff,.37,.61);
+  gl.uniform1f(U.uEffect,$('on').checked?1:0);
+  SL.forEach(s=>gl.uniform1f(U[s[5]],st[s[0]]));
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+}
+function setSource(el,w,h){const s=Math.min(1,1400/Math.max(w,h));W=Math.round(w*s);H=Math.round(h*s);cv.width=W;cv.height=H;src=el;render()}
+// Пример: сцена в тёплом свете, нарисована на 2D-канвасе
+function sample(){
+  const c=document.createElement('canvas');c.width=1200;c.height=800;const x=c.getContext('2d');
+  let g=x.createLinearGradient(0,0,0,500);g.addColorStop(0,'#3b6fb6');g.addColorStop(1,'#f2c08a');x.fillStyle=g;x.fillRect(0,0,1200,800);
+  x.fillStyle='#ffd97a';x.beginPath();x.arc(880,260,70,0,7);x.fill();
+  x.fillStyle='#355e3b';x.beginPath();x.moveTo(0,520);for(let i=0;i<=12;i++)x.lineTo(i*100,430+(i%3)*50-(i%2)*30);x.lineTo(1200,800);x.lineTo(0,800);x.fill();
+  x.fillStyle='#b5482f';x.fillRect(180,360,260,200);x.fillStyle='#6b2a1c';x.beginPath();x.moveTo(160,360);x.lineTo(310,260);x.lineTo(460,360);x.fill();
+  x.fillStyle='#f0e2b6';x.fillRect(260,430,60,130);x.fillRect(350,400,60,60);
+  x.fillStyle='#2a3a52';x.fillRect(0,640,1200,160);
+  x.fillStyle='#e8e2d4';for(let i=0;i<6;i++){x.fillRect(80+i*190,700,110,12)}
+  x.fillStyle='#d0556e';x.beginPath();x.arc(760,560,46,0,7);x.fill();x.fillStyle='#e8c9a4';x.beginPath();x.arc(760,500,28,0,7);x.fill();
+  setSource(c,c.width,c.height);
+}
+const rows=$('sliders');
+SL.forEach(([id,label,mn,mx])=>{
+  const r=document.createElement('div');r.className='row';
+  r.innerHTML='<label for="s-'+id+'">'+label+'</label><input type="range" id="s-'+id+'" min="'+mn+'" max="'+mx+'" step="0.01"><span class="v"></span>';
+  rows.appendChild(r);const i=r.querySelector('input'),v=r.querySelector('.v');
+  r._s=()=>{i.value=st[id];v.textContent=(+st[id]).toFixed(2)};r._s();
+  i.addEventListener('input',()=>{st[id]=parseFloat(i.value);r._s();render()});
+});
+$('on').addEventListener('change',render);
+$('reset').addEventListener('click',()=>{SL.forEach(s=>st[s[0]]=s[4]);rows.querySelectorAll('.row').forEach(r=>r._s());render()});
+$('file').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const im=new Image();im.onload=()=>{setSource(im,im.naturalWidth,im.naturalHeight);$('hint').textContent='Показано твоё фото. Оно обрабатывается только в браузере.'};
+  im.onerror=()=>{$('hint').textContent='Не удалось открыть файл. Выбери JPEG или PNG.'};
+  im.src=URL.createObjectURL(f);
+});
+try{init();sample()}catch(e){$('hint').textContent='WebGL2 недоступен: '+e.message}
+</script>
