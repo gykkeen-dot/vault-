@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>FilmCam</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="status" class="status" hidden></div>
+<div id="perf" class="perf" hidden></div>
+
+<div id="start" class="start">
+  <h1>FilmCam</h1>
+  <p>Плёночная камера. Нужен доступ к камере.</p>
+  <button id="startBtn" class="pill">Включить камеру</button>
+</div>
+
+<div id="panel" class="panel" hidden>
+  <div class="panel-head">
+    <label class="toggle"><input type="checkbox" id="effectOn" checked> Bleach Bypass</label>
+    <label class="toggle"><input type="checkbox" id="eco"> Эко</label>
+    <button id="reset" class="link">Сброс</button>
+  </div>
+  <div id="sliders" class="sliders"></div>
+</div>
+
+<div class="bar">
+  <button id="panelBtn" class="side" aria-label="Настройки">⚙︎</button>
+  <button id="shutter" class="shutter" aria-label="Снять" disabled></button>
+  <a id="thumbLink" class="side thumb" aria-label="Последнее фото"><img id="thumb" alt=""></a>
+</div>
+
+<script src="app.js" type="module"></script>
+</body>
+</html>
