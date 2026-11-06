@@ -4,36 +4,72 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#e6eaed">
 <title>FilmCam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<canvas id="view"></canvas>
+<div class="console">
+  <header class="hud">
+    <span><i class="led"></i><b>FILMCAM</b></span>
+    <span id="perf">СИСТЕМА ГОТОВА</span>
+  </header>
 
-<div id="status" class="status" hidden></div>
-<div id="perf" class="perf" hidden></div>
+  <section class="viewport" id="vp">
+    <div class="frame" id="frame">
+      <canvas id="view"></canvas>
+      <i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i>
+      <div class="readout" id="readout"></div>
+      <div class="count" id="count" hidden></div>
+      <div class="status" id="status" hidden></div>
+    </div>
+  </section>
+
+  <section class="deck">
+    <div class="drawer" id="panel" hidden>
+      <div class="drawer-head">
+        <label><input type="checkbox" id="effectOn" checked> Bleach Bypass</label>
+        <label><input type="checkbox" id="eco"> Эко</label>
+        <button id="reset" class="link">СБРОС</button>
+      </div>
+      <div id="sliders"></div>
+    </div>
+
+    <div class="rack">
+      <div class="group"><span class="lab">Зум</span>
+        <div class="seg" id="zoomSeg">
+          <button data-zoom="0.5">0.5</button><button data-zoom="1" class="on">1×</button><button data-zoom="2">2×</button><button data-zoom="3">3×</button>
+        </div></div>
+      <div class="group"><span class="lab">Камера</span>
+        <div class="seg" id="camSeg">
+          <button data-cam="environment" class="on">ТЫЛ</button><button data-cam="user">ФРОНТ</button>
+        </div></div>
+      <div class="group"><span class="lab">Кадр</span>
+        <div class="seg" id="arSeg">
+          <button data-ar="9:16" class="on">9:16</button><button data-ar="4:3">4:3</button><button data-ar="1:1">1:1</button>
+        </div></div>
+      <div class="group"><span class="lab">Таймер</span>
+        <div class="seg" id="timerSeg">
+          <button data-t="0" class="on">ВЫКЛ</button><button data-t="3">3С</button><button data-t="10">10С</button>
+        </div></div>
+    </div>
+
+    <div class="main">
+      <button id="panelBtn" class="side" aria-label="Эффекты и ползунки">FX</button>
+      <button id="shutter" class="shutter" aria-label="Снять" disabled></button>
+      <a id="thumbLink" class="side thumb" aria-label="Последнее фото"><span>ФОТО</span><img id="thumb" alt=""></a>
+    </div>
+  </section>
+</div>
 
 <div id="start" class="start">
-  <h1>FilmCam</h1>
-  <p>Плёночная камера. Нужен доступ к камере.</p>
-  <button id="startBtn" class="pill">Включить камеру</button>
-</div>
-
-<div id="panel" class="panel" hidden>
-  <div class="panel-head">
-    <label class="toggle"><input type="checkbox" id="effectOn" checked> Bleach Bypass</label>
-    <label class="toggle"><input type="checkbox" id="eco"> Эко</label>
-    <button id="reset" class="link">Сброс</button>
-  </div>
-  <div id="sliders" class="sliders"></div>
-</div>
-
-<div class="bar">
-  <button id="panelBtn" class="side" aria-label="Настройки">⚙︎</button>
-  <button id="shutter" class="shutter" aria-label="Снять" disabled></button>
-  <a id="thumbLink" class="side thumb" aria-label="Последнее фото"><img id="thumb" alt=""></a>
+  <h1>FILMCAM</h1>
+  <p>Плёночная камера. Для работы нужен доступ к камере.</p>
+  <button id="startBtn">ВКЛЮЧИТЬ</button>
 </div>
 
 <script src="app.js" type="module"></script>

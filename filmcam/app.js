@@ -15,6 +15,8 @@ uniform sampler2D uNoise;
 uniform vec2 uTexel;      // 1/размер видео
 uniform vec2 uRes;        // размер канваса
 uniform vec2 uGrainOff;   // сдвиг шума по времени
+uniform vec2 uCrop;       // доля исходного кадра (формат + зум)
+uniform float uMirror;    // 1 = зеркало (фронталка)
 uniform float uEffect;    // 1 = Bleach Bypass включён
 uniform float uIntensity, uContrast, uBrightness, uSaturation, uTemperature, uTint;
 uniform float uHighlights, uShadows, uSharpness, uBlur, uGrain, uGrainSize, uVignette, uFade;
@@ -32,7 +34,9 @@ vec3 bleachBypass(vec3 c){
 }
 
 void main(){
-  vec3 c = texture(uTex, vUv).rgb;
+  vec2 uv = (vUv - 0.5) * uCrop + 0.5;
+  if (uMirror > 0.5) uv.x = 1.0 - uv.x;
+  vec3 c = texture(uTex, uv).rgb;
 
   // Blur / Sharpness: 3x3 только если нужны
   if (uBlur > 0.001 || uSharpness > 0.001) {
@@ -40,7 +44,7 @@ void main(){
     vec3 s = vec3(0.0);
     for (int y = -1; y <= 1; y++)
       for (int x = -1; x <= 1; x++)
-        s += texture(uTex, vUv + vec2(float(x), float(y)) * uTexel * r).rgb;
+        s += texture(uTex, uv + vec2(float(x), float(y)) * uTexel * r).rgb;
     s /= 9.0;
     if (uBlur > 0.001) c = mix(c, s, clamp(uBlur * 2.0, 0.0, 1.0));
     c += (c - s) * uSharpness * 2.0;
@@ -101,6 +105,8 @@ const SLIDERS = [
 
 // Состояние = будущий пресет (этап 6 просто сохранит этот объект в JSON)
 const state = { effect: 'bleach', eco: false };
+// Настройки камеры (не входят в пресет)
+const cam = { facing: 'environment', zoom: 1, ar: '9:16', timer: 0, ultraId: null, mainId: {}, kind: 'main', busy: false };
 for (const s of SLIDERS) state[s[0]] = s[4];
 
 const $ = (id) => document.getElementById(id);
@@ -178,13 +184,45 @@ function setCanvasSize(w, h) {
   gl.viewport(0, 0, w, h);
 }
 
-function previewSize() {
+const AR = { '9:16': 9 / 16, '4:3': 3 / 4, '1:1': 1 };
+
+// Выходное соотношение сторон с учётом ориентации потока
+function outAspect() {
   const vw = video.videoWidth, vh = video.videoHeight;
-  const short = Math.min(vw, vh);
-  const tier = state.eco ? Math.min(quality.tiers[quality.i], 720) : quality.tiers[quality.i];
-  const s = Math.min(1, tier / short);
-  return [Math.round(vw * s), Math.round(vh * s)];
+  const a = AR[cam.ar];
+  if (!vw) return a;
+  return vh >= vw ? a : 1 / a;
 }
+
+// Какую часть исходного кадра берём: центр-кроп под формат и цифровой зум
+function cropFrac() {
+  const V = video.videoWidth / video.videoHeight, A = outAspect();
+  let cx = 1, cy = 1;
+  if (A < V) cx = A / V; else cy = V / A;
+  const z = Math.max(1, cam.zoom);
+  return [cx / z, cy / z];
+}
+
+function previewSize() {
+  const [cx, cy] = cropFrac();
+  const sw = video.videoWidth * cx, sh = video.videoHeight * cy;
+  const tier = state.eco ? Math.min(quality.tiers[quality.i], 720) : quality.tiers[quality.i];
+  const s = Math.min(1, tier / Math.min(sw, sh));
+  return [Math.round(sw * s), Math.round(sh * s)];
+}
+
+function fitFrame() {
+  const vp = $('vp'), fr = $('frame');
+  const cs = getComputedStyle(vp);
+  const W = vp.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 14;
+  const H = vp.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 14;
+  const A = outAspect();
+  let w = W, h = W / A;
+  if (h > H) { h = H; w = H * A; }
+  fr.style.width = Math.max(0, Math.floor(w)) + 'px';
+  fr.style.height = Math.max(0, Math.floor(h)) + 'px';
+}
+new ResizeObserver(fitFrame).observe(document.getElementById('vp'));
 
 function draw() {
   gl.activeTexture(gl.TEXTURE0);
@@ -196,6 +234,8 @@ function draw() {
   gl.uniform2f(U.uTexel, 1 / video.videoWidth, 1 / video.videoHeight);
   gl.uniform2f(U.uRes, canvas.width, canvas.height);
   gl.uniform2f(U.uGrainOff, Math.random(), Math.random());
+  gl.uniform2f(U.uCrop, ...cropFrac());
+  gl.uniform1f(U.uMirror, cam.facing === 'user' ? 1 : 0);
   gl.uniform1f(U.uEffect, state.effect === 'bleach' ? 1 : 0);
   for (const s of SLIDERS) gl.uniform1f(U[s[5]], state[s[0]]);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -232,7 +272,7 @@ function onFrame(now, meta) {
   fpsN++;
   if (now - fpsT > 1000) {
     fps = Math.round(fpsN * 1000 / (now - fpsT)); fpsN = 0; fpsT = now;
-    $('perf').textContent = `${canvas.width}x${canvas.height} · ${fps} fps · ${renderMs.toFixed(1)} ms`;
+    $('perf').textContent = `${canvas.width}×${canvas.height} · ${fps} FPS · ${renderMs.toFixed(1)} MS`;
   }
 }
 
@@ -248,12 +288,13 @@ function startLoop() {
 function stopLoop() { running = false; }
 
 // ---------- Камера ----------
-async function openCamera() {
+async function openCamera({ deviceId } = {}) {
   closeCamera();
-  const tries = [
-    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
-    { video: true, audio: false },
-  ];
+  const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  const tries = [];
+  if (deviceId) tries.push({ video: { deviceId: { exact: deviceId }, ...size }, audio: false });
+  tries.push({ video: { facingMode: { ideal: cam.facing }, ...size }, audio: false });
+  tries.push({ video: true, audio: false });
   let err;
   for (const c of tries) {
     try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch (e) { err = e; }
@@ -262,6 +303,19 @@ async function openCamera() {
   video.srcObject = stream;
   await video.play();
   if (!video.videoWidth) await new Promise((r) => video.addEventListener('loadedmetadata', r, { once: true }));
+  const id = stream.getVideoTracks()[0].getSettings().deviceId;
+  if (cam.kind === 'main') cam.mainId[cam.facing] = id;
+  await detectUltraWide();
+}
+
+// 0.5x: ищем ультраширокую камеру по названию (метки доступны после разрешения)
+async function detectUltraWide() {
+  try {
+    const list = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+    const u = list.find((d) => /ultra/i.test(d.label) && !/front|user|перед/i.test(d.label));
+    cam.ultraId = u ? u.deviceId : null;
+  } catch { cam.ultraId = null; }
+  syncUI();
 }
 
 function closeCamera() {
@@ -269,6 +323,116 @@ function closeCamera() {
   if (stream) stream.getTracks().forEach((t) => t.stop());
   stream = null; video.srcObject = null;
 }
+
+// Любое действие, которое перезапускает поток
+async function switchCamera(fn) {
+  if (cam.busy) return;
+  cam.busy = true; syncUI(); showStatus('ПЕРЕКЛЮЧЕНИЕ КАМЕРЫ…');
+  try { await fn(); startLoop(); showStatus(''); }
+  catch (e) { showStatus('Ошибка камеры: ' + (e.message || e.name)); }
+  cam.busy = false; fitFrame(); syncUI();
+}
+
+async function setFacing(f) {
+  if (f === cam.facing || cam.busy) return;
+  await switchCamera(async () => {
+    cam.facing = f; cam.zoom = 1; cam.kind = 'main'; unlockFocus();
+    await openCamera({ deviceId: cam.mainId[f] });
+  });
+}
+
+async function setZoom(z) {
+  if (cam.busy) return;
+  if (z === 0.5) {
+    if (!cam.ultraId || cam.facing !== 'environment') return;
+    if (cam.kind !== 'ultra') {
+      await switchCamera(async () => { cam.kind = 'ultra'; cam.zoom = 0.5; await openCamera({ deviceId: cam.ultraId }); });
+    } else cam.zoom = 0.5;
+  } else if (cam.kind === 'ultra') {
+    await switchCamera(async () => { cam.kind = 'main'; cam.zoom = z; await openCamera({ deviceId: cam.mainId[cam.facing] }); });
+  } else cam.zoom = z;
+  syncUI();
+}
+
+function setAspect(ar) { cam.ar = ar; fitFrame(); syncUI(); }
+
+function syncUI() {
+  const mark = (seg, attr, val) => document.querySelectorAll(`#${seg} button`).forEach((b) => {
+    b.classList.toggle('on', String(b.dataset[attr]) === String(val));
+  });
+  mark('zoomSeg', 'zoom', cam.zoom); mark('camSeg', 'cam', cam.facing);
+  mark('arSeg', 'ar', cam.ar); mark('timerSeg', 't', cam.timer);
+  const z05 = document.querySelector('#zoomSeg [data-zoom="0.5"]');
+  z05.disabled = !cam.ultraId || cam.facing !== 'environment';
+  document.querySelectorAll('#zoomSeg button, #camSeg button').forEach((b) => { if (cam.busy) b.disabled = true; else if (b !== z05) b.disabled = false; });
+  if (cam.busy) z05.disabled = true;
+  const [cx] = cropFrac();
+  $('readout').textContent = `${cam.facing === 'user' ? 'ФРОНТ' : 'ТЫЛ'} · ${cam.zoom}× · ${cam.ar}${cam.timer ? ' · ТАЙМЕР ' + cam.timer + 'С' : ''}${cx ? '' : ''}`;
+}
+
+// ---------- Фокус по тапу / блокировка по долгому нажатию ----------
+let focusLocked = false;
+
+function toVideoPoint(x, y) {
+  // x, y: 0..1 внутри кадра -> координаты в исходном потоке
+  const [cx, cy] = cropFrac();
+  let vx = (x - 0.5) * cx + 0.5;
+  if (cam.facing === 'user') vx = 1 - vx;
+  return { x: vx, y: (y - 0.5) * cy + 0.5 };
+}
+
+async function focusAt(x, y, lock) {
+  const track = stream && stream.getVideoTracks()[0];
+  const caps = (track && track.getCapabilities) ? track.getCapabilities() : {};
+  const has = (k, v) => Array.isArray(caps[k]) && caps[k].includes(v);
+  let label = 'ФОКУС НЕ ПОДДЕРЖАН';
+  try {
+    if (lock && has('focusMode', 'manual')) {
+      await track.applyConstraints({ advanced: [{ focusMode: 'manual' }] });
+      if (has('exposureMode', 'manual')) await track.applyConstraints({ advanced: [{ exposureMode: 'manual' }] });
+      focusLocked = true; label = 'AE/AF ЗАФИКСИРОВАНО';
+    } else if (has('focusMode', 'single-shot')) {
+      const p = toVideoPoint(x, y);
+      await track.applyConstraints({ advanced: [{ focusMode: 'single-shot', pointsOfInterest: [p] }] });
+      label = 'ФОКУС';
+    } else if (lock) label = 'ФИКСАЦИЯ НЕ ПОДДЕРЖАНА';
+  } catch { label = 'ФОКУС НЕ ПОДДЕРЖАН'; }
+  showReticle(x, y, label, focusLocked);
+}
+
+async function unlockFocus() {
+  if (!focusLocked) return;
+  focusLocked = false;
+  document.querySelectorAll('.reticle').forEach((r) => r.remove());
+  const track = stream && stream.getVideoTracks()[0];
+  try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }, { exposureMode: 'continuous' }] }); } catch { /* ок */ }
+}
+
+function showReticle(x, y, label, lock) {
+  const fr = $('frame');
+  fr.querySelectorAll('.reticle').forEach((r) => r.remove());
+  const r = document.createElement('div');
+  r.className = 'reticle' + (lock ? ' lock' : '');
+  r.style.left = x * 100 + '%'; r.style.top = y * 100 + '%';
+  r.innerHTML = `<span>${label}</span>`;
+  fr.appendChild(r);
+  if (!lock) setTimeout(() => r.remove(), 1200);
+}
+
+(function bindFocus() {
+  const fr = $('frame'); let t = null, long = false;
+  const pos = (e) => { const b = fr.getBoundingClientRect(); return [(e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height]; };
+  fr.addEventListener('pointerdown', (e) => {
+    if (!running) return;
+    long = false; const [x, y] = pos(e);
+    t = setTimeout(() => { long = true; if (focusLocked) unlockFocus(); else focusAt(x, y, true); }, 600);
+  });
+  fr.addEventListener('pointerup', (e) => {
+    clearTimeout(t);
+    if (!long && running) { const [x, y] = pos(e); focusAt(x, y, false); }
+  });
+  fr.addEventListener('pointerleave', () => clearTimeout(t));
+})();
 
 async function requestWakeLock() {
   try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch { /* не критично */ }
@@ -283,8 +447,8 @@ document.addEventListener('visibilitychange', async () => {
 // ---------- Фото в полном разрешении ----------
 function takePhoto() {
   if (!running) return;
-  const vw = video.videoWidth, vh = video.videoHeight;
-  setCanvasSize(vw, vh);
+  const [cx, cy] = cropFrac();
+  setCanvasSize(Math.round(video.videoWidth * cx), Math.round(video.videoHeight * cy));
   draw();
   canvas.toBlob(async (blob) => {
     setCanvasSize(...previewSize());
@@ -345,6 +509,7 @@ async function start() {
     $('start').hidden = true;
     $('perf').hidden = false;
     $('shutter').disabled = false;
+    fitFrame(); syncUI();
     startLoop();
   } catch (e) {
     $('startBtn').disabled = false;
@@ -353,11 +518,29 @@ async function start() {
 }
 
 $('startBtn').addEventListener('click', start);
-$('shutter').addEventListener('click', takePhoto);
-$('panelBtn').addEventListener('click', () => { $('panel').hidden = !$('panel').hidden; });
+let countdown = null;
+function cancelCountdown() {
+  clearInterval(countdown); countdown = null;
+  $('count').hidden = true; $('shutter').classList.remove('armed');
+}
+$('shutter').addEventListener('click', () => {
+  if (countdown) return cancelCountdown();
+  if (!cam.timer) return takePhoto();
+  let n = cam.timer;
+  $('shutter').classList.add('armed'); $('count').hidden = false; $('count').textContent = n;
+  countdown = setInterval(() => {
+    n--;
+    if (n <= 0) { cancelCountdown(); takePhoto(); } else $('count').textContent = n;
+  }, 1000);
+});
+document.querySelectorAll('#zoomSeg button').forEach((b) => b.addEventListener('click', () => setZoom(parseFloat(b.dataset.zoom))));
+document.querySelectorAll('#camSeg button').forEach((b) => b.addEventListener('click', () => setFacing(b.dataset.cam)));
+document.querySelectorAll('#arSeg button').forEach((b) => b.addEventListener('click', () => setAspect(b.dataset.ar)));
+document.querySelectorAll('#timerSeg button').forEach((b) => b.addEventListener('click', () => { cam.timer = parseInt(b.dataset.t, 10); syncUI(); }));
+$('panelBtn').addEventListener('click', () => { $('panel').hidden = !$('panel').hidden; $('panelBtn').classList.toggle('on', !$('panel').hidden); });
 $('effectOn').addEventListener('change', (e) => { state.effect = e.target.checked ? 'bleach' : 'none'; });
 $('eco').addEventListener('change', (e) => { state.eco = e.target.checked; });
 $('reset').addEventListener('click', resetSliders);
 
 // Для автотестов
-window.__filmcam = { state, get quality() { return quality; } };
+window.__filmcam = { state, cam, setZoom, setAspect, setFacing, get quality() { return quality; } };
