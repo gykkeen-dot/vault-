@@ -11,7 +11,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .hud{display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:0 2px 10px}
 .hud b{font:600 15px var(--cond);letter-spacing:.22em;color:var(--ink)}
 .led{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);margin-right:8px}
-.frame{position:relative;background:var(--screen);border-radius:10px;overflow:hidden;display:flex;justify-content:center;box-shadow:0 0 0 6px var(--panel),0 0 0 7px var(--line),0 8px 22px rgba(30,40,50,.18);margin:0 6px}
+.seg{display:flex;gap:2px;padding:2px;background:#e3e7ea;border-radius:8px;box-shadow:inset 0 1px 2px rgba(0,0,0,.14);margin-top:12px}
+.seg button{flex:1;min-width:0;height:30px;padding:0 10px;border:0;border-radius:6px;background:transparent;font:10px var(--mono);letter-spacing:.12em;color:#2b3238;cursor:pointer}
+.seg button.on{background:var(--white);color:var(--signal-ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.25),inset 0 -2px 0 var(--signal),0 0 8px var(--glow)}
+.maskrow{display:flex;gap:14px;flex-wrap:wrap;grid-column:1/-1}
+.maskrow .seg{margin-top:4px}.g{display:flex;flex-direction:column}.lab{font-size:9px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
+.ring{position:absolute;border:2px solid var(--signal);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 8px var(--glow)}
+.frame{position:relative;background:var(--screen);border-radius:10px;overflow:hidden;display:flex;justify-content:center;width:fit-content;max-width:100%;box-shadow:0 0 0 6px var(--panel),0 0 0 7px var(--line),0 8px 22px rgba(30,40,50,.18);margin:0 6px}
 canvas{max-width:100%;max-height:42vh;display:block}
 .cn{position:absolute;width:16px;height:16px;border:0 solid var(--signal);pointer-events:none}
 .tl{top:8px;left:8px;border-top-width:2px;border-left-width:2px}.tr{top:8px;right:8px;border-top-width:2px;border-right-width:2px}
@@ -47,17 +53,31 @@ input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:3px;bac
       <label class="btn" for="file">Choose photo</label><input type="file" id="file" accept="image/*">
       <button class="ghost" id="reset">RESET</button>
     </div>
+    <div class="seg" id="tabs"><button data-tab="presets" class="on">PRESETS</button><button data-tab="touch">TOUCH</button><button data-tab="mask">MASK</button></div>
     <div class="chips" id="fxList"></div>
   </div>
   <p class="hint" id="hint">Showing a sample. The live camera runs in the app itself (filmcam/ folder), not here.</p>
+  <div class="panel" id="maskPanel" hidden>
+    <div class="maskrow">
+      <div class="g"><span class="lab">Mode</span><div class="seg" id="mMode"><button data-m="erase" class="on">ERASE</button><button data-m="restore">RESTORE</button></div></div>
+      <div class="g"><span class="lab">Tool</span><div class="seg" id="mTool"><button data-tool="brush" class="on">BRUSH</button><button data-tool="shape">SHAPE</button></div></div>
+    </div>
+    <div class="row"><label for="mSize">Size</label><input type="range" id="mSize" min="5" max="150" value="50"><span class="v" id="mSizeV">50</span></div>
+    <div class="row"><label for="mOpacity">Opacity</label><input type="range" id="mOpacity" min="0" max="100" value="100"><span class="v" id="mOpacityV">100</span></div>
+    <div class="row"><label for="mHard">Hardness</label><input type="range" id="mHard" min="0" max="100" value="70"><span class="v" id="mHardV">70</span></div>
+    <div class="maskrow"><button class="ghost" id="mInvert">INVERT</button><button class="ghost" id="mReset">RESET MASK</button></div>
+  </div>
   <div class="panel" id="sliders"></div>
 </div>
 <script>
 /*SHADER*/
+/*MASK*/
 const st={effect:'bleach'};SLIDERS.forEach(s=>st[s[0]]=s[4]);
 const $=id=>document.getElementById(id), cv=$('c');
+const frameEl=document.querySelector('.frame');
 const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true,antialias:false});
-let U={},src=null,tex,W=1,H=1;
+let U={},src=null,tex,maskTex,W=1,H=1,maskDirty=true;
+const mask=createMask(frameEl,()=>{maskDirty=true;render()});
 function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o}
 function init(){
   const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,VERT));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,FRAG));gl.linkProgram(p);gl.useProgram(p);
@@ -71,7 +91,9 @@ function init(){
   const n=gl.createTexture();gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,n);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,256,256,0,gl.RED,gl.UNSIGNED_BYTE,d);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
   [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.REPEAT],[gl.TEXTURE_WRAP_T,gl.REPEAT]].forEach(a=>gl.texParameteri(gl.TEXTURE_2D,a[0],a[1]));
-  gl.uniform1i(U.uTex,0);gl.uniform1i(U.uNoise,1);
+  maskTex=gl.createTexture();gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,maskTex);
+  [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]].forEach(a=>gl.texParameteri(gl.TEXTURE_2D,a[0],a[1]));
+  gl.uniform1i(U.uTex,0);gl.uniform1i(U.uNoise,1);gl.uniform1i(U.uMask,2);
 }
 // Animated effects (VHS, noise) need a redraw loop; static ones draw once per change.
 let pend=false;function render(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;draw()})}
@@ -79,6 +101,9 @@ function draw(){
   if(!src)return;
   gl.viewport(0,0,W,H);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
+  gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,maskTex);
+  if(maskDirty){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,mask.canvas);maskDirty=false}
+  gl.uniform1f(U.uMaskOn,mask.active?1:0);
   gl.activeTexture(gl.TEXTURE1);
   gl.uniform2f(U.uTexel,1/W,1/H);gl.uniform2f(U.uRes,W,H);gl.uniform2f(U.uGrainOff,Math.random(),Math.random());
   gl.uniform2f(U.uCrop,1,1);gl.uniform1f(U.uMirror,0);gl.uniform1f(U.uTime,(performance.now()/1000)%1000);
@@ -108,12 +133,30 @@ SLIDERS.forEach(([id,label,mn,mx])=>{
   r._s=()=>{i.value=st[id];v.textContent=(+st[id]).toFixed(2)};r._s();
   i.addEventListener('input',()=>{st[id]=parseFloat(i.value);r._s();render()});
 });
-const box=$('fxList');
-function addChip(id,name){const b=document.createElement('button');b.className='chip';b.textContent=name;b.dataset.fx=id;
+const box=$('fxList');let tab='presets';
+function addChip(id,name){const b=document.createElement('button');b.className='chip'+(id===st.effect?' on':'');b.textContent=name;b.dataset.fx=id;
   b.addEventListener('click',()=>{st.effect=id;box.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.fx===id));render()});box.appendChild(b)}
-let grp='';addChip('none','Original');
-EFFECTS.forEach(e=>{if(e.group!==grp){grp=e.group;const s=document.createElement('span');s.className='sep';s.textContent=grp;box.appendChild(s)}addChip(e.id,e.name)});
-box.querySelector('[data-fx="'+st.effect+'"]').classList.add('on');
+function buildChips(){
+  box.innerHTML='';addChip('none','Original');let grp='';
+  EFFECTS.filter(e=>e.tab===tab&&!e.fb).forEach(e=>{if(e.group!==grp){grp=e.group;const s=document.createElement('span');s.className='sep';s.textContent=grp;box.appendChild(s)}addChip(e.id,e.name)});
+}
+function setTab(n){
+  tab=n;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===n));
+  const isMask=n==='mask';box.hidden=isMask;$('maskPanel').hidden=!isMask;mask.setEnabled(isMask);
+  if(!isMask)buildChips();
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+buildChips();
+(function(){
+  const seg=(id,attr,key)=>document.querySelectorAll('#'+id+' button').forEach(b=>b.addEventListener('click',()=>{mask[key]=b.dataset[attr];document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.toggle('on',x===b))}));
+  seg('mMode','m','mode');seg('mTool','tool','tool');
+  const sl=(id,key,sc)=>{const i=$(id),v=$(id+'V');const f=()=>{mask[key]=parseFloat(i.value)/sc;v.textContent=i.value};i.addEventListener('input',f);f()};
+  sl('mSize','size',1);sl('mOpacity','opacity',100);sl('mHard','hardness',100);
+  $('mInvert').addEventListener('click',()=>mask.invert());$('mReset').addEventListener('click',()=>mask.reset());
+  const ring=document.createElement('div');ring.className='ring';ring.hidden=true;frameEl.appendChild(ring);
+  const mv=e=>{if(!mask.enabled||mask.tool!=='brush'){ring.hidden=true;return}const b=frameEl.getBoundingClientRect();ring.style.width=ring.style.height=mask.size+'px';ring.style.left=e.clientX-b.left+'px';ring.style.top=e.clientY-b.top+'px';ring.hidden=false};
+  frameEl.addEventListener('pointerdown',mv);frameEl.addEventListener('pointermove',mv);frameEl.addEventListener('pointerup',()=>{ring.hidden=true});frameEl.addEventListener('pointerleave',()=>{ring.hidden=true});
+})();
 $('reset').addEventListener('click',()=>{SLIDERS.forEach(s=>st[s[0]]=s[4]);rows.querySelectorAll('.row').forEach(r=>r._s());render()});
 $('file').addEventListener('change',e=>{
   const f=e.target.files[0];if(!f)return;
@@ -122,6 +165,6 @@ $('file').addEventListener('change',e=>{
   im.src=URL.createObjectURL(f);
 });
 // Keep animated effects (VHS bands, noise) alive
-setInterval(()=>{if(['vhs','webcam','surveillance','nightvision','motorola'].includes(st.effect))render()},100);
+setInterval(()=>{if((EFFECTS.find(e=>e.id===st.effect)||{n:0}).n>=100||['vhs','webcam','surveillance','nightvision','motorola'].includes(st.effect))render()},100);
 try{init();sample()}catch(e){$('hint').textContent='WebGL2 is not available: '+e.message}
 </script>

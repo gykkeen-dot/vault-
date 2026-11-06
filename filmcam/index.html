@@ -31,12 +31,33 @@
 
   <section class="deck">
     <div class="drawer" id="panel" hidden>
-      <div class="chips" id="fxList"></div>
-      <div class="drawer-head">
-        <label><input type="checkbox" id="eco"> Eco</label>
-        <button id="reset" class="link">RESET</button>
+      <div class="tabs" id="tabs">
+        <button data-tab="presets" class="on">PRESETS</button><button data-tab="touch">TOUCH</button><button data-tab="adjust">ADJUST</button><button data-tab="mask">MASK</button>
       </div>
-      <div id="sliders"></div>
+      <div id="pane-presets"><div class="chips" id="fxPresets"></div></div>
+      <div id="pane-touch" hidden><div class="chips" id="fxTouch"></div></div>
+      <div id="pane-adjust" hidden>
+        <div class="drawer-head">
+          <label><input type="checkbox" id="eco"> Eco</label>
+          <button id="reset" class="link">RESET</button>
+        </div>
+        <div id="sliders"></div>
+      </div>
+      <div id="pane-mask" hidden>
+        <p class="hint">Paint on the picture. Erase shows the original, Restore brings the effect back.</p>
+        <div class="maskrow">
+          <div class="group"><span class="lab">Mode</span>
+            <div class="seg" id="mMode"><button data-m="erase" class="on">ERASE</button><button data-m="restore">RESTORE</button></div></div>
+          <div class="group"><span class="lab">Tool</span>
+            <div class="seg" id="mTool"><button data-tool="brush" class="on">BRUSH</button><button data-tool="shape">SHAPE</button></div></div>
+        </div>
+        <div class="row"><label for="mSize">Size</label><input type="range" id="mSize" min="5" max="150" value="50"><span class="v" id="mSizeV">50</span></div>
+        <div class="row"><label for="mOpacity">Opacity</label><input type="range" id="mOpacity" min="0" max="100" value="100"><span class="v" id="mOpacityV">100</span></div>
+        <div class="row"><label for="mHard">Hardness</label><input type="range" id="mHard" min="0" max="100" value="70"><span class="v" id="mHardV">70</span></div>
+        <div class="maskrow">
+          <button id="mInvert" class="link">INVERT</button><button id="mReset" class="link">RESET MASK</button>
+        </div>
+      </div>
     </div>
 
     <div class="rack">

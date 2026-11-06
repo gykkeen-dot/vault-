@@ -1,7 +1,8 @@
 // FilmCam, этап 1: камера -> WebGL2 (один проход) -> фото.
 // Все эффекты и ползунки живут в одном фрагментном шейдере, включаются uniform-значениями.
 
-import { VERT, FRAG, SLIDERS, EFFECTS } from './shader.js';
+import { VERT, FRAG, FRAG_FB, SLIDERS, EFFECTS } from './shader.js';
+import { createMask } from './mask.js';
 
 // Состояние = будущий пресет (этап 6 просто сохранит этот объект в JSON)
 const state = { effect: 'bleach', eco: false }; // effect: id from EFFECTS or 'none'
@@ -14,7 +15,9 @@ const canvas = $('view');
 const video = document.createElement('video');
 video.playsInline = true; video.muted = true; video.autoplay = true;
 
-let gl, prog, U = {}, tex, noiseTex;
+let gl, prog, progFb, U = {}, Ufb = {}, tex, noiseTex, maskTex, fb = null;
+let maskDirty = true, fbReset = true;
+const mask = createMask(document.getElementById('frame'), () => { maskDirty = true; });
 let stream = null, running = false, wakeLock = null;
 let quality = { tiers: [1080, 720, 540], i: 0 };
 let lastDraw = 0, skipped = 0, frames = 0, renderMs = 0, lastPresented = 0, fps = 0, fpsT = 0, fpsN = 0;
@@ -35,19 +38,29 @@ function compile(type, src) {
 function initGL() {
   gl = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
   if (!gl) throw new Error('WebGL2 is not available');
-  prog = gl.createProgram();
-  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
-  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  const vs = compile(gl.VERTEX_SHADER, VERT);
+  const link = (fragSrc) => {
+    const p = gl.createProgram();
+    gl.attachShader(p, vs);
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fragSrc));
+    gl.bindAttribLocation(p, 0, 'aPos');
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  };
+  prog = link(FRAG);
+  progFb = link(FRAG_FB);
+  for (let i = 0; i < gl.getProgramParameter(progFb, gl.ACTIVE_UNIFORMS); i++) {
+    const name = gl.getActiveUniform(progFb, i).name;
+    Ufb[name] = gl.getUniformLocation(progFb, name);
+  }
   gl.useProgram(prog);
 
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-  const loc = gl.getAttribLocation(prog, 'aPos');
-  gl.enableVertexAttribArray(loc);
-  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
   const n = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
   for (let i = 0; i < n; i++) {
@@ -75,8 +88,36 @@ function initGL() {
   for (const [p, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
     [gl.TEXTURE_WRAP_S, gl.REPEAT], [gl.TEXTURE_WRAP_T, gl.REPEAT]]) gl.texParameteri(gl.TEXTURE_2D, p, v);
 
+  // Mask texture (unit 2), re-uploaded only when the mask changes
+  maskTex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, maskTex);
+  for (const [p, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
+    [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, p, v);
+
   gl.uniform1i(U.uTex, 0);
   gl.uniform1i(U.uNoise, 1);
+  gl.uniform1i(U.uMask, 2);
+}
+
+// Three render targets for feedback effects: fresh frame, ping, pong
+function ensureFb(w, h) {
+  if (fb && fb.w === w && fb.h === h) return;
+  if (fb) { fb.tex.forEach((t) => gl.deleteTexture(t)); fb.fbo.forEach((f) => gl.deleteFramebuffer(f)); }
+  fb = { w, h, tex: [], fbo: [], prev: 1 };
+  for (let i = 0; i < 3; i++) {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    for (const [p, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
+      [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, p, v);
+    const f = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    fb.tex.push(t); fb.fbo.push(f);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  fbReset = true;
 }
 
 function setCanvasSize(w, h) {
@@ -124,23 +165,64 @@ function fitFrame() {
 }
 new ResizeObserver(fitFrame).observe(document.getElementById('vp'));
 
-function draw() {
+function draw(forPhoto = false) {
+  const fx = EFFECTS.find((e) => e.id === state.effect);
+  const useFb = !!(fx && fx.fb) && !forPhoto;
+  gl.useProgram(prog);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, noiseTex);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, maskTex);
+  if (maskDirty) {
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, mask.canvas);
+    maskDirty = false;
+  }
 
   gl.uniform2f(U.uTexel, 1 / video.videoWidth, 1 / video.videoHeight);
   gl.uniform2f(U.uRes, canvas.width, canvas.height);
   gl.uniform2f(U.uGrainOff, Math.random(), Math.random());
   gl.uniform2f(U.uCrop, ...cropFrac());
   gl.uniform1f(U.uMirror, cam.facing === 'user' ? 1 : 0);
-  const fx = EFFECTS.find((e) => e.id === state.effect);
   gl.uniform1f(U.uEffect, fx ? fx.n : 0);
+  gl.uniform1f(U.uMaskOn, mask.active ? 1 : 0);
   gl.uniform1f(U.uTime, (performance.now() / 1000) % 1000);
   for (const s of SLIDERS) gl.uniform1f(U[s[5]], state[s[0]]);
+
+  if (!useFb) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    fbReset = true;
+    return;
+  }
+
+  // Feedback: 1) effect -> fresh frame, 2) blend with history -> next, 3) show next
+  const w = canvas.width, h = canvas.height;
+  ensureFb(w, h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb.fbo[0]);
+  gl.viewport(0, 0, w, h);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  const prev = fb.prev, next = 3 - prev;
+  gl.useProgram(progFb);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fb.tex[0]);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, fb.tex[prev]);
+  gl.uniform1i(Ufb.uCur, 0); gl.uniform1i(Ufb.uPrev, 1);
+  gl.uniform1f(Ufb.uAspect, w / h);
+  gl.uniform1f(Ufb.uMode, fx.fbMode);
+  gl.uniform1f(Ufb.uReset, fbReset ? 1 : 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb.fbo[next]);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fb.tex[next]);
+  gl.uniform1f(Ufb.uMode, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  fb.prev = next; fbReset = false;
 }
 
 // ---------- Цикл: рисуем только на новый кадр ----------
@@ -325,13 +407,13 @@ function showReticle(x, y, label, lock) {
   const fr = $('frame'); let t = null, long = false;
   const pos = (e) => { const b = fr.getBoundingClientRect(); return [(e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height]; };
   fr.addEventListener('pointerdown', (e) => {
-    if (!running) return;
+    if (!running || mask.enabled) return;
     long = false; const [x, y] = pos(e);
     t = setTimeout(() => { long = true; if (focusLocked) unlockFocus(); else focusAt(x, y, true); }, 600);
   });
   fr.addEventListener('pointerup', (e) => {
     clearTimeout(t);
-    if (!long && running) { const [x, y] = pos(e); focusAt(x, y, false); }
+    if (!long && running && !mask.enabled) { const [x, y] = pos(e); focusAt(x, y, false); }
   });
   fr.addEventListener('pointerleave', () => clearTimeout(t));
 })();
@@ -351,7 +433,7 @@ function takePhoto() {
   if (!running) return;
   const [cx, cy] = cropFrac();
   setCanvasSize(Math.round(video.videoWidth * cx), Math.round(video.videoHeight * cy));
-  draw();
+  draw(true);
   canvas.toBlob(async (blob) => {
     setCanvasSize(...previewSize());
     if (!blob) return showStatus('Could not save the photo');
@@ -396,27 +478,70 @@ function buildSliders() {
 }
 
 function buildEffects() {
-  const box = $('fxList');
-  const add = (id, name) => {
+  const lists = { presets: $('fxPresets'), touch: $('fxTouch') };
+  const select = (id) => {
+    state.effect = id;
+    document.querySelectorAll('#panel .chip').forEach((c) => c.classList.toggle('on', c.dataset.fx === id));
+  };
+  const add = (box, id, name) => {
     const b = document.createElement('button');
-    b.className = 'chip'; b.textContent = name; b.dataset.fx = id;
-    b.addEventListener('click', () => {
-      state.effect = id;
-      box.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.fx === id));
-    });
+    b.className = 'chip' + (id === state.effect ? ' on' : ''); b.textContent = name; b.dataset.fx = id;
+    b.addEventListener('click', () => select(id));
     box.appendChild(b);
   };
-  let group = '';
-  add('none', 'Original');
-  for (const e of EFFECTS) {
-    if (e.group !== group) {
-      group = e.group;
-      const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = group; box.appendChild(sep);
+  for (const [tab, box] of Object.entries(lists)) {
+    add(box, 'none', 'Original');
+    let group = '';
+    for (const e of EFFECTS.filter((x) => x.tab === tab)) {
+      if (e.group !== group) {
+        group = e.group;
+        const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = group; box.appendChild(sep);
+      }
+      add(box, e.id, e.name);
     }
-    add(e.id, e.name);
   }
-  box.querySelector(`[data-fx="${state.effect}"]`).classList.add('on');
 }
+
+// ---------- Drawer tabs ----------
+let curTab = 'presets';
+function syncMaskMode() { mask.setEnabled(!$('panel').hidden && curTab === 'mask'); }
+function setTab(t) {
+  curTab = t;
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  for (const n of ['presets', 'touch', 'adjust', 'mask']) $('pane-' + n).hidden = n !== t;
+  syncMaskMode();
+}
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+// ---------- Mask panel ----------
+(function wireMask() {
+  const seg = (id, attr, key) => document.querySelectorAll(`#${id} button`).forEach((b) => b.addEventListener('click', () => {
+    mask[key] = b.dataset[attr];
+    document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle('on', x === b));
+  }));
+  seg('mMode', 'm', 'mode'); seg('mTool', 'tool', 'tool');
+  const slider = (id, key, scale) => {
+    const i = $(id), v = $(id + 'V');
+    const sync = () => { mask[key] = parseFloat(i.value) / scale; v.textContent = i.value; };
+    i.addEventListener('input', sync); sync();
+  };
+  slider('mSize', 'size', 1); slider('mOpacity', 'opacity', 100); slider('mHard', 'hardness', 100);
+  $('mInvert').addEventListener('click', () => mask.invert());
+  $('mReset').addEventListener('click', () => mask.reset());
+
+  // Brush ring that follows the finger
+  const fr = $('frame'), ring = document.createElement('div');
+  ring.className = 'ring'; ring.hidden = true; fr.appendChild(ring);
+  const move = (e) => {
+    if (!mask.enabled || mask.tool !== 'brush') { ring.hidden = true; return; }
+    const b = fr.getBoundingClientRect();
+    ring.style.width = ring.style.height = mask.size + 'px';
+    ring.style.left = e.clientX - b.left + 'px'; ring.style.top = e.clientY - b.top + 'px';
+    ring.hidden = false;
+  };
+  fr.addEventListener('pointerdown', move); fr.addEventListener('pointermove', move);
+  fr.addEventListener('pointerup', () => { ring.hidden = true; }); fr.addEventListener('pointerleave', () => { ring.hidden = true; });
+})();
 
 function resetSliders() {
   for (const s of SLIDERS) state[s[0]] = s[4];
@@ -463,9 +588,9 @@ document.querySelectorAll('#zoomSeg button').forEach((b) => b.addEventListener('
 document.querySelectorAll('#camSeg button').forEach((b) => b.addEventListener('click', () => setFacing(b.dataset.cam)));
 document.querySelectorAll('#arSeg button').forEach((b) => b.addEventListener('click', () => setAspect(b.dataset.ar)));
 document.querySelectorAll('#timerSeg button').forEach((b) => b.addEventListener('click', () => { cam.timer = parseInt(b.dataset.t, 10); syncUI(); }));
-$('panelBtn').addEventListener('click', () => { $('panel').hidden = !$('panel').hidden; $('panelBtn').classList.toggle('on', !$('panel').hidden); });
+$('panelBtn').addEventListener('click', () => { $('panel').hidden = !$('panel').hidden; $('panelBtn').classList.toggle('on', !$('panel').hidden); syncMaskMode(); });
 $('eco').addEventListener('change', (e) => { state.eco = e.target.checked; });
 $('reset').addEventListener('click', resetSliders);
 
 // Для автотестов
-window.__filmcam = { state, cam, setZoom, setAspect, setFacing, get quality() { return quality; } };
+window.__filmcam = { state, cam, mask, setZoom, setAspect, setFacing, get quality() { return quality; } };

@@ -25,3 +25,9 @@
 
 ## Публикация на телефон (GitHub Pages)
 Workflow `.github/workflows/pages.yml` выкладывает папку `filmcam/`. Один раз: Settings -> Pages -> Source: GitHub Actions. Для приватного репозитория Pages требует платный тариф GitHub. Если деплой с ветки отклонён правилами окружения `github-pages`, добавь ветку в Settings -> Environments -> github-pages -> Deployment branches.
+
+## Этап 4 (TouchDesigner-эффекты и маска)
+- Панель FX теперь с вкладками: PRESETS (Filters + Digicam), TOUCH (27 эффектов в стиле TouchDesigner), ADJUST (14 ползунков, Eco), MASK.
+- TOUCH: Warp (Kaleidoscope, Mirror Quad, Tunnel, Swirl, Bulge, Ripple, Noise Warp, Tile Grid, Wave, Glitch Blocks), Style (RGB Split, Neon Edges, Halftone, Dither, ASCII, Mosaic, Hex Pixels, LED Matrix, Cel Edges, Duotone Flow, Wire Grid, Zoom Blur, Pointillize, Hue Cycle, Bloom), Feedback (Echo Trails, Feedback Tunnel; второй проход с историей кадра, только в приложении, не в превью и не в фото).
+- MASK: кисть Size / Opacity / Hardness, режимы Erase / Restore, инструменты Brush / Shape, Invert, Reset. Маска хранится 512x512 в долях кадра и работает вместе с Intensity.
+- Код: `shader.js` (шейдеры и списки эффектов), `mask.js` (кисть).
