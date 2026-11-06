@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -16,7 +16,7 @@
 <div class="console">
   <header class="hud">
     <span><i class="led"></i><b>FILMCAM</b></span>
-    <span id="perf">СИСТЕМА ГОТОВА</span>
+    <span id="perf">SYSTEM READY</span>
   </header>
 
   <section class="viewport" id="vp">
@@ -33,43 +33,43 @@
     <div class="drawer" id="panel" hidden>
       <div class="drawer-head">
         <label><input type="checkbox" id="effectOn" checked> Bleach Bypass</label>
-        <label><input type="checkbox" id="eco"> Эко</label>
-        <button id="reset" class="link">СБРОС</button>
+        <label><input type="checkbox" id="eco"> Eco</label>
+        <button id="reset" class="link">RESET</button>
       </div>
       <div id="sliders"></div>
     </div>
 
     <div class="rack">
-      <div class="group"><span class="lab">Зум</span>
+      <div class="group"><span class="lab">Zoom</span>
         <div class="seg" id="zoomSeg">
           <button data-zoom="0.5">0.5</button><button data-zoom="1" class="on">1×</button><button data-zoom="2">2×</button><button data-zoom="3">3×</button>
         </div></div>
-      <div class="group"><span class="lab">Камера</span>
+      <div class="group"><span class="lab">Camera</span>
         <div class="seg" id="camSeg">
-          <button data-cam="environment" class="on">ТЫЛ</button><button data-cam="user">ФРОНТ</button>
+          <button data-cam="environment" class="on">BACK</button><button data-cam="user">FRONT</button>
         </div></div>
-      <div class="group"><span class="lab">Кадр</span>
+      <div class="group"><span class="lab">Frame</span>
         <div class="seg" id="arSeg">
           <button data-ar="9:16" class="on">9:16</button><button data-ar="4:3">4:3</button><button data-ar="1:1">1:1</button>
         </div></div>
-      <div class="group"><span class="lab">Таймер</span>
+      <div class="group"><span class="lab">Timer</span>
         <div class="seg" id="timerSeg">
-          <button data-t="0" class="on">ВЫКЛ</button><button data-t="3">3С</button><button data-t="10">10С</button>
+          <button data-t="0" class="on">OFF</button><button data-t="3">3S</button><button data-t="10">10S</button>
         </div></div>
     </div>
 
     <div class="main">
-      <button id="panelBtn" class="side" aria-label="Эффекты и ползунки">FX</button>
-      <button id="shutter" class="shutter" aria-label="Снять" disabled></button>
-      <a id="thumbLink" class="side thumb" aria-label="Последнее фото"><span>ФОТО</span><img id="thumb" alt=""></a>
+      <button id="panelBtn" class="side" aria-label="Effects and sliders">FX</button>
+      <button id="shutter" class="shutter" aria-label="Take photo" disabled></button>
+      <a id="thumbLink" class="side thumb" aria-label="Last photo"><span>PHOTO</span><img id="thumb" alt=""></a>
     </div>
   </section>
 </div>
 
 <div id="start" class="start">
   <h1>FILMCAM</h1>
-  <p>Плёночная камера. Для работы нужен доступ к камере.</p>
-  <button id="startBtn">ВКЛЮЧИТЬ</button>
+  <p>Film camera. Camera access is required.</p>
+  <button id="startBtn">START</button>
 </div>
 
 <script src="app.js" type="module"></script>

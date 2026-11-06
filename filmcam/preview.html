@@ -1,8 +1,8 @@
 <title>FilmCam Preview</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-/* Layout: «экран» и кнопки закреплены сверху, ползунки прокручиваются под ними */
-:root{--bg1:#e6eaed;--panel:#f8f9fa;--white:#fff;--line:#c4cacf;--ink:#1b1f23;--mute:#6f7880;--signal:#ff5b14;--ok:#2fbf71;--screen:#050607;
+/* Layout: screen and buttons are pinned on top, sliders scroll beneath */
+:root{--bg1:#e6eaed;--panel:#f8f9fa;--white:#fff;--line:#c4cacf;--ink:#1b1f23;--mute:#6f7880;--signal:#00c8ff;--signal-ink:#0086c3;--glow:rgba(0,200,255,.55);--ok:#2fbf71;--screen:#050607;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;--cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;color-scheme:light}
 body{background:var(--bg1);color:var(--ink);font:13px/1.35 var(--mono);padding-block:0 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg1);z-index:10}
@@ -17,7 +17,7 @@ canvas{max-width:100%;max-height:42vh;display:block}
 .tl{top:8px;left:8px;border-top-width:2px;border-left-width:2px}.tr{top:8px;right:8px;border-top-width:2px;border-right-width:2px}
 .bl{bottom:8px;left:8px;border-bottom-width:2px;border-left-width:2px}.br{bottom:8px;right:8px;border-bottom-width:2px;border-right-width:2px}
 .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
-.btn{background:var(--signal);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:0 3px 8px rgba(255,91,20,.3)}
+.btn{background:var(--signal);color:#03202b;border:0;border-radius:8px;padding:10px 16px;font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 14px var(--glow)}
 button.ghost{background:var(--white);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font:11px var(--mono);letter-spacing:.14em;cursor:pointer}
 .tg{display:flex;gap:6px;align-items:center;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
 .tg input{accent-color:var(--signal)}
@@ -29,22 +29,22 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--signal);outline
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0}
 input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:#cfd5d9}
 input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:#cfd5d9}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:22px;margin-top:-9px;border-radius:3px;background:var(--white);border:1px solid #98a1a8;box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 -3px 0 var(--signal)}
-input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:3px;background:var(--white);border:1px solid #98a1a8;box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 -3px 0 var(--signal)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:22px;margin-top:-9px;border-radius:3px;background:var(--white);border:1px solid #98a1a8;box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 -3px 0 var(--signal),0 0 6px var(--glow)}
+input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:3px;background:var(--white);border:1px solid #98a1a8;box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 -3px 0 var(--signal),0 0 6px var(--glow)}
 #file{display:none}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <div class="wrap">
   <div class="dock">
-    <div class="hud"><span><i class="led"></i><b>FILMCAM</b></span><span>Превью · Bleach Bypass</span></div>
+    <div class="hud"><span><i class="led"></i><b>FILMCAM</b></span><span>Preview · Bleach Bypass</span></div>
     <div class="frame"><canvas id="c"></canvas><i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i></div>
     <div class="bar">
-      <label class="btn" for="file">Выбрать фото</label><input type="file" id="file" accept="image/*">
+      <label class="btn" for="file">Choose photo</label><input type="file" id="file" accept="image/*">
       <label class="tg"><input type="checkbox" id="on" checked> Bleach Bypass</label>
-      <button class="ghost" id="reset">СБРОС</button>
+      <button class="ghost" id="reset">RESET</button>
     </div>
   </div>
-  <p class="hint" id="hint">Показан пример. Живая камера работает в самом приложении (папка filmcam/), здесь её нет.</p>
+  <p class="hint" id="hint">Showing a sample. The live camera runs in the app itself (filmcam/ folder), not here.</p>
   <div class="panel" id="sliders"></div>
 </div>
 <script>
@@ -58,10 +58,10 @@ in vec2 vUv;
 out vec4 outColor;
 uniform sampler2D uTex;
 uniform sampler2D uNoise;
-uniform vec2 uTexel;      // 1/размер видео
-uniform vec2 uRes;        // размер канваса
-uniform vec2 uGrainOff;   // сдвиг шума по времени
-uniform float uEffect;    // 1 = Bleach Bypass включён
+uniform vec2 uTexel;      // 1/video size
+uniform vec2 uRes;        // canvas size
+uniform vec2 uGrainOff;   // grain offset
+uniform float uEffect;    // 1 = Bleach Bypass on
 uniform float uIntensity, uContrast, uBrightness, uSaturation, uTemperature, uTint;
 uniform float uHighlights, uShadows, uSharpness, uBlur, uGrain, uGrainSize, uVignette, uFade;
 
@@ -183,9 +183,9 @@ $('on').addEventListener('change',render);
 $('reset').addEventListener('click',()=>{SL.forEach(s=>st[s[0]]=s[4]);rows.querySelectorAll('.row').forEach(r=>r._s());render()});
 $('file').addEventListener('change',e=>{
   const f=e.target.files[0];if(!f)return;
-  const im=new Image();im.onload=()=>{setSource(im,im.naturalWidth,im.naturalHeight);$('hint').textContent='Показано твоё фото. Оно обрабатывается только в браузере.'};
-  im.onerror=()=>{$('hint').textContent='Не удалось открыть файл. Выбери JPEG или PNG.'};
+  const im=new Image();im.onload=()=>{setSource(im,im.naturalWidth,im.naturalHeight);$('hint').textContent='Showing your photo. It is processed in your browser only.'};
+  im.onerror=()=>{$('hint').textContent='Could not open the file. Choose a JPEG or PNG.'};
   im.src=URL.createObjectURL(f);
 });
-try{init();sample()}catch(e){$('hint').textContent='WebGL2 недоступен: '+e.message}
+try{init();sample()}catch(e){$('hint').textContent='WebGL2 is not available: '+e.message}
 </script>

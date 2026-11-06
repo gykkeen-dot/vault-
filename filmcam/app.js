@@ -12,12 +12,12 @@ in vec2 vUv;
 out vec4 outColor;
 uniform sampler2D uTex;
 uniform sampler2D uNoise;
-uniform vec2 uTexel;      // 1/размер видео
-uniform vec2 uRes;        // размер канваса
-uniform vec2 uGrainOff;   // сдвиг шума по времени
-uniform vec2 uCrop;       // доля исходного кадра (формат + зум)
-uniform float uMirror;    // 1 = зеркало (фронталка)
-uniform float uEffect;    // 1 = Bleach Bypass включён
+uniform vec2 uTexel;      // 1/video size
+uniform vec2 uRes;        // canvas size
+uniform vec2 uGrainOff;   // grain offset per frame
+uniform vec2 uCrop;       // fraction of the source frame (aspect + zoom)
+uniform float uMirror;    // 1 = mirror (front camera)
+uniform float uEffect;    // 1 = Bleach Bypass on
 uniform float uIntensity, uContrast, uBrightness, uSaturation, uTemperature, uTint;
 uniform float uHighlights, uShadows, uSharpness, uBlur, uGrain, uGrainSize, uVignette, uFade;
 
@@ -134,7 +134,7 @@ function compile(type, src) {
 
 function initGL() {
   gl = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
-  if (!gl) throw new Error('WebGL2 недоступен');
+  if (!gl) throw new Error('WebGL2 is not available');
   prog = gl.createProgram();
   gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
   gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
@@ -312,7 +312,7 @@ async function openCamera({ deviceId } = {}) {
 async function detectUltraWide() {
   try {
     const list = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
-    const u = list.find((d) => /ultra/i.test(d.label) && !/front|user|перед/i.test(d.label));
+    const u = list.find((d) => /ultra/i.test(d.label) && !/front|user/i.test(d.label));
     cam.ultraId = u ? u.deviceId : null;
   } catch { cam.ultraId = null; }
   syncUI();
@@ -327,9 +327,9 @@ function closeCamera() {
 // Любое действие, которое перезапускает поток
 async function switchCamera(fn) {
   if (cam.busy) return;
-  cam.busy = true; syncUI(); showStatus('ПЕРЕКЛЮЧЕНИЕ КАМЕРЫ…');
+  cam.busy = true; syncUI(); showStatus('SWITCHING CAMERA…');
   try { await fn(); startLoop(); showStatus(''); }
-  catch (e) { showStatus('Ошибка камеры: ' + (e.message || e.name)); }
+  catch (e) { showStatus('Camera error: ' + (e.message || e.name)); }
   cam.busy = false; fitFrame(); syncUI();
 }
 
@@ -367,7 +367,7 @@ function syncUI() {
   document.querySelectorAll('#zoomSeg button, #camSeg button').forEach((b) => { if (cam.busy) b.disabled = true; else if (b !== z05) b.disabled = false; });
   if (cam.busy) z05.disabled = true;
   const [cx] = cropFrac();
-  $('readout').textContent = `${cam.facing === 'user' ? 'ФРОНТ' : 'ТЫЛ'} · ${cam.zoom}× · ${cam.ar}${cam.timer ? ' · ТАЙМЕР ' + cam.timer + 'С' : ''}${cx ? '' : ''}`;
+  $('readout').textContent = `${cam.facing === 'user' ? 'FRONT' : 'BACK'} · ${cam.zoom}× · ${cam.ar}${cam.timer ? ' · TIMER ' + cam.timer + 'S' : ''}${cx ? '' : ''}`;
 }
 
 // ---------- Фокус по тапу / блокировка по долгому нажатию ----------
@@ -385,18 +385,18 @@ async function focusAt(x, y, lock) {
   const track = stream && stream.getVideoTracks()[0];
   const caps = (track && track.getCapabilities) ? track.getCapabilities() : {};
   const has = (k, v) => Array.isArray(caps[k]) && caps[k].includes(v);
-  let label = 'ФОКУС НЕ ПОДДЕРЖАН';
+  let label = 'FOCUS NOT SUPPORTED';
   try {
     if (lock && has('focusMode', 'manual')) {
       await track.applyConstraints({ advanced: [{ focusMode: 'manual' }] });
       if (has('exposureMode', 'manual')) await track.applyConstraints({ advanced: [{ exposureMode: 'manual' }] });
-      focusLocked = true; label = 'AE/AF ЗАФИКСИРОВАНО';
+      focusLocked = true; label = 'AE/AF LOCKED';
     } else if (has('focusMode', 'single-shot')) {
       const p = toVideoPoint(x, y);
       await track.applyConstraints({ advanced: [{ focusMode: 'single-shot', pointsOfInterest: [p] }] });
-      label = 'ФОКУС';
-    } else if (lock) label = 'ФИКСАЦИЯ НЕ ПОДДЕРЖАНА';
-  } catch { label = 'ФОКУС НЕ ПОДДЕРЖАН'; }
+      label = 'FOCUS';
+    } else if (lock) label = 'LOCK NOT SUPPORTED';
+  } catch { label = 'FOCUS NOT SUPPORTED'; }
   showReticle(x, y, label, focusLocked);
 }
 
@@ -405,7 +405,7 @@ async function unlockFocus() {
   focusLocked = false;
   document.querySelectorAll('.reticle').forEach((r) => r.remove());
   const track = stream && stream.getVideoTracks()[0];
-  try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }, { exposureMode: 'continuous' }] }); } catch { /* ок */ }
+  try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }, { exposureMode: 'continuous' }] }); } catch { /* ignore */ }
 }
 
 function showReticle(x, y, label, lock) {
@@ -435,7 +435,7 @@ function showReticle(x, y, label, lock) {
 })();
 
 async function requestWakeLock() {
-  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch { /* не критично */ }
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch { /* not critical */ }
 }
 
 document.addEventListener('visibilitychange', async () => {
@@ -452,7 +452,7 @@ function takePhoto() {
   draw();
   canvas.toBlob(async (blob) => {
     setCanvasSize(...previewSize());
-    if (!blob) return showStatus('Не удалось сохранить кадр');
+    if (!blob) return showStatus('Could not save the photo');
     const name = `filmcam-${Date.now()}.jpg`;
     const url = URL.createObjectURL(blob);
     $('thumb').src = url; $('thumbLink').classList.add('has');
@@ -501,7 +501,7 @@ function resetSliders() {
 async function start() {
   $('startBtn').disabled = true;
   try {
-    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Нужен HTTPS и современный браузер');
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('HTTPS and a modern browser are required');
     initGL();
     buildSliders();
     await openCamera();
@@ -513,7 +513,7 @@ async function start() {
     startLoop();
   } catch (e) {
     $('startBtn').disabled = false;
-    $('start').querySelector('p').textContent = 'Ошибка: ' + (e.message || e.name);
+    $('start').querySelector('p').textContent = 'Error: ' + (e.message || e.name);
   }
 }
 
