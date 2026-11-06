@@ -18,3 +18,10 @@
 - `state` в `app.js` = будущий пресет (этап 6)
 - Этап 2: фронт/тыл, зум 0.5/1/2/3 (0.5 — ультраширокая камера, если iOS отдаёт её в списке; 2 и 3 — цифровой кроп в шейдере), форматы 9:16 / 4:3 / 1:1, таймер 3/10 с, тап = фокус, долгое нажатие = фиксация AE/AF (где браузер это поддерживает)
 - Интерфейс: белый пульт управления; экран закреплён, панель ползунков прокручивается отдельно
+- Этап 3: 18 эффектов в одном шейдере (`shader.js`): Filters (Bleach Bypass, Doll House, Jet Black, Teal & Orange, Solarize, Candy) и Digicam (CCD, CCD Flash, Nokia, Motorola, 3GS, Webcam, Polaroid, Disposable, VHS, Surveillance, Thermal, Nightvision). Выбор: кнопка FX -> строка эффектов. Цветокоррекция пока формулами, не 3D LUT.
+
+## Превью для Artifact
+`preview.html` собирается из `preview.template.html` и `shader.js`: `python3 tools/build_preview.py`.
+
+## Публикация на телефон (GitHub Pages)
+Workflow `.github/workflows/pages.yml` выкладывает папку `filmcam/`. Один раз: Settings -> Pages -> Source: GitHub Actions. Для приватного репозитория Pages требует платный тариф GitHub. Если деплой с ветки отклонён правилами окружения `github-pages`, добавь ветку в Settings -> Environments -> github-pages -> Deployment branches.

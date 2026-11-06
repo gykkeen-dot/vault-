@@ -1,110 +1,10 @@
 // FilmCam, этап 1: камера -> WebGL2 (один проход) -> фото.
 // Все эффекты и ползунки живут в одном фрагментном шейдере, включаются uniform-значениями.
 
-const VERT = `#version 300 es
-in vec2 aPos;
-out vec2 vUv;
-void main(){ vUv = aPos*0.5+0.5; gl_Position = vec4(aPos,0.,1.); }`;
-
-const FRAG = `#version 300 es
-precision highp float;
-in vec2 vUv;
-out vec4 outColor;
-uniform sampler2D uTex;
-uniform sampler2D uNoise;
-uniform vec2 uTexel;      // 1/video size
-uniform vec2 uRes;        // canvas size
-uniform vec2 uGrainOff;   // grain offset per frame
-uniform vec2 uCrop;       // fraction of the source frame (aspect + zoom)
-uniform float uMirror;    // 1 = mirror (front camera)
-uniform float uEffect;    // 1 = Bleach Bypass on
-uniform float uIntensity, uContrast, uBrightness, uSaturation, uTemperature, uTint;
-uniform float uHighlights, uShadows, uSharpness, uBlur, uGrain, uGrainSize, uVignette, uFade;
-
-float luma(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
-
-vec3 bleachBypass(vec3 c){
-  float l = luma(c);
-  float k = clamp((l - 0.45) * 10.0, 0.0, 1.0);
-  vec3 dark  = 2.0 * c * l;
-  vec3 light = 1.0 - 2.0 * (1.0 - c) * (1.0 - l);
-  vec3 ov = mix(dark, light, k);
-  vec3 desat = mix(vec3(l), c, 0.45);
-  return mix(desat, ov, 0.7) * 1.05;
-}
-
-void main(){
-  vec2 uv = (vUv - 0.5) * uCrop + 0.5;
-  if (uMirror > 0.5) uv.x = 1.0 - uv.x;
-  vec3 c = texture(uTex, uv).rgb;
-
-  // Blur / Sharpness: 3x3 только если нужны
-  if (uBlur > 0.001 || uSharpness > 0.001) {
-    float r = 1.0 + uBlur * 6.0;
-    vec3 s = vec3(0.0);
-    for (int y = -1; y <= 1; y++)
-      for (int x = -1; x <= 1; x++)
-        s += texture(uTex, uv + vec2(float(x), float(y)) * uTexel * r).rgb;
-    s /= 9.0;
-    if (uBlur > 0.001) c = mix(c, s, clamp(uBlur * 2.0, 0.0, 1.0));
-    c += (c - s) * uSharpness * 2.0;
-  }
-
-  // Temperature / Tint
-  c.r += uTemperature * 0.12;  c.b -= uTemperature * 0.12;
-  c.g += uTint * 0.10;         c.r -= uTint * 0.04; c.b -= uTint * 0.04;
-
-  // Highlights / Shadows
-  float l0 = luma(c);
-  c += uHighlights * smoothstep(0.5, 1.0, l0) * 0.3;
-  c += uShadows * (1.0 - smoothstep(0.0, 0.5, l0)) * 0.3;
-
-  // Эффект
-  if (uEffect > 0.5) c = mix(c, bleachBypass(clamp(c, 0.0, 1.0)), uIntensity);
-
-  // Brightness / Contrast / Saturation
-  c += uBrightness * 0.5;
-  c = (c - 0.5) * (1.0 + uContrast) + 0.5;
-  float l1 = luma(c);
-  c = mix(vec3(l1), c, 1.0 + uSaturation);
-
-  // Fade (приподнятые чёрные)
-  c = c * (1.0 - uFade * 0.35) + uFade * 0.14;
-
-  // Vignette
-  vec2 d = vUv - 0.5;
-  c *= 1.0 - uVignette * smoothstep(0.25, 0.8, length(d * vec2(uRes.x / uRes.y, 1.0)));
-
-  // Grain из готовой текстуры (без random на пиксель)
-  if (uGrain > 0.001) {
-    float n = texture(uNoise, vUv * uRes / (256.0 * max(uGrainSize, 0.5)) + uGrainOff).r - 0.5;
-    float l2 = luma(c);
-    c += n * uGrain * 0.5 * (1.0 - pow(abs(l2 * 2.0 - 1.0), 2.0) * 0.6);
-  }
-
-  outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
-}`;
-
-// ---- Ползунки: id, подпись, min, max, значение по умолчанию, uniform ----
-const SLIDERS = [
-  ['intensity',   'Intensity',   0, 1, 1,   'uIntensity'],
-  ['contrast',    'Contrast',   -1, 1, 0.15,'uContrast'],
-  ['brightness',  'Brightness', -1, 1, 0,   'uBrightness'],
-  ['saturation',  'Saturation', -1, 1, 0,   'uSaturation'],
-  ['temperature', 'Temperature',-1, 1, 0,   'uTemperature'],
-  ['tint',        'Tint',       -1, 1, 0,   'uTint'],
-  ['highlights',  'Highlights', -1, 1, 0,   'uHighlights'],
-  ['shadows',     'Shadows',    -1, 1, 0,   'uShadows'],
-  ['sharpness',   'Sharpness',   0, 1, 0.2, 'uSharpness'],
-  ['blur',        'Blur',        0, 1, 0,   'uBlur'],
-  ['grain',       'Grain',       0, 1, 0.3, 'uGrain'],
-  ['grainSize',   'Grain Size',0.5, 3, 1.2, 'uGrainSize'],
-  ['vignette',    'Vignette',    0, 1, 0.3, 'uVignette'],
-  ['fade',        'Fade',        0, 1, 0.1, 'uFade'],
-];
+import { VERT, FRAG, SLIDERS, EFFECTS } from './shader.js';
 
 // Состояние = будущий пресет (этап 6 просто сохранит этот объект в JSON)
-const state = { effect: 'bleach', eco: false };
+const state = { effect: 'bleach', eco: false }; // effect: id from EFFECTS or 'none'
 // Настройки камеры (не входят в пресет)
 const cam = { facing: 'environment', zoom: 1, ar: '9:16', timer: 0, ultraId: null, mainId: {}, kind: 'main', busy: false };
 for (const s of SLIDERS) state[s[0]] = s[4];
@@ -236,7 +136,9 @@ function draw() {
   gl.uniform2f(U.uGrainOff, Math.random(), Math.random());
   gl.uniform2f(U.uCrop, ...cropFrac());
   gl.uniform1f(U.uMirror, cam.facing === 'user' ? 1 : 0);
-  gl.uniform1f(U.uEffect, state.effect === 'bleach' ? 1 : 0);
+  const fx = EFFECTS.find((e) => e.id === state.effect);
+  gl.uniform1f(U.uEffect, fx ? fx.n : 0);
+  gl.uniform1f(U.uTime, (performance.now() / 1000) % 1000);
   for (const s of SLIDERS) gl.uniform1f(U[s[5]], state[s[0]]);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
@@ -493,6 +395,29 @@ function buildSliders() {
   }
 }
 
+function buildEffects() {
+  const box = $('fxList');
+  const add = (id, name) => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = name; b.dataset.fx = id;
+    b.addEventListener('click', () => {
+      state.effect = id;
+      box.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.fx === id));
+    });
+    box.appendChild(b);
+  };
+  let group = '';
+  add('none', 'Original');
+  for (const e of EFFECTS) {
+    if (e.group !== group) {
+      group = e.group;
+      const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = group; box.appendChild(sep);
+    }
+    add(e.id, e.name);
+  }
+  box.querySelector(`[data-fx="${state.effect}"]`).classList.add('on');
+}
+
 function resetSliders() {
   for (const s of SLIDERS) state[s[0]] = s[4];
   document.querySelectorAll('#sliders .row').forEach((r) => r._sync());
@@ -504,6 +429,7 @@ async function start() {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('HTTPS and a modern browser are required');
     initGL();
     buildSliders();
+    buildEffects();
     await openCamera();
     await requestWakeLock();
     $('start').hidden = true;
@@ -538,7 +464,6 @@ document.querySelectorAll('#camSeg button').forEach((b) => b.addEventListener('c
 document.querySelectorAll('#arSeg button').forEach((b) => b.addEventListener('click', () => setAspect(b.dataset.ar)));
 document.querySelectorAll('#timerSeg button').forEach((b) => b.addEventListener('click', () => { cam.timer = parseInt(b.dataset.t, 10); syncUI(); }));
 $('panelBtn').addEventListener('click', () => { $('panel').hidden = !$('panel').hidden; $('panelBtn').classList.toggle('on', !$('panel').hidden); });
-$('effectOn').addEventListener('change', (e) => { state.effect = e.target.checked ? 'bleach' : 'none'; });
 $('eco').addEventListener('change', (e) => { state.eco = e.target.checked; });
 $('reset').addEventListener('click', resetSliders);
 
