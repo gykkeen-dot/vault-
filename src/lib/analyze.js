@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 export async function analyzeItem({ base64, mimeType = 'image/jpeg' }) {
   if (!supabase) {
     await new Promise((r) => setTimeout(r, 900));
-    return { demo: true, brand: 'Rick Owens', collection: 'Geobasket', season: 'FW08', confidence: 0.42,
+    return { demo: true, brand: 'Rick Owens', collection: 'Geobasket', season: 'FW08', slot: 'outer', colors: ['olive', 'grey'], confidence: 0.42,
       note: 'Demo answer: Supabase is not connected, no recognition was run.' };
   }
   // There is no sign-in screen yet, so we use Supabase anonymous sign-in (enable: Authentication → Sign In / Providers → Anonymous).

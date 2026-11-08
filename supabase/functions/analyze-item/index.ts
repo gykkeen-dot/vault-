@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 400,
-      system: 'You identify high-fashion pieces from photos. Reply with JSON only: {"brand":string|null,"collection":string|null,"season":string|null,"confidence":number 0..1}. If unsure, use null and a low confidence. Do not invent.',
+      system: 'You identify high-fashion pieces from photos. Reply with JSON only: {"brand":string|null,"collection":string|null,"season":string|null,"slot":"top"|"bottom"|"outer"|"shoes"|"bag"|"accessory"|null,"colors":string[],"confidence":number 0..1}. If unsure, use null and a low confidence. Do not invent.',
       messages: [{ role: 'user', content: [
         { type: 'image', source: { type: 'base64', media_type: mimeType, data: image } },
         { type: 'text', text: 'Identify the brand, collection and season (for example FW08).' },
@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
     const parsed = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
     return json({
       brand: parsed.brand ?? null, collection: parsed.collection ?? null, season: parsed.season ?? null,
+      slot: parsed.slot ?? null, colors: Array.isArray(parsed.colors) ? parsed.colors.slice(0, 4).map(String) : [],
       confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0)),
     });
   } catch {
