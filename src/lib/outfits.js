@@ -28,3 +28,18 @@ export function suggestLooks(item, limit = 3) {
     .map((x) => ({ id: x.look.id, silhouette: x.look.silhouette, palette: x.look.palette, rules: x.look.rules.slice(0, 2),
       pieces: x.look.pieces.map((p) => p.item), draft: !x.look.confirmed_by_author }));
 }
+
+// Free-text search over looks: every word must match pieces, palette, tags, silhouette or rules.
+export function searchLooks(query, limit = 20) {
+  const words = norm(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  return LOOKS
+    .filter((look) => {
+      const hay = norm([look.silhouette, ...look.palette, ...look.tags, ...look.rules,
+        ...look.pieces.map((p) => `${p.slot} ${p.item} ${p.brand}`)].join(' '));
+      return words.every((w) => hay.includes(w));
+    })
+    .slice(0, limit)
+    .map((look) => ({ id: look.id, silhouette: look.silhouette, palette: look.palette, tags: look.tags,
+      pieces: look.pieces.map((p) => p.item), draft: !look.confirmed_by_author }));
+}
