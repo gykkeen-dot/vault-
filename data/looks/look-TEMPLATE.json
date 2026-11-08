@@ -1,0 +1,14 @@
+{
+  "id": "look-000",
+  "source": "https://www.tiktok.com/@mpa3eu/video/REPLACE",
+  "pieces": [
+    { "slot": "top", "item": "describe the piece", "brand": "", "era": "" },
+    { "slot": "bottom", "item": "", "brand": "", "era": "" },
+    { "slot": "shoes", "item": "", "brand": "", "era": "" }
+  ],
+  "silhouette": "oversized-top/slim-bottom",
+  "palette": ["black", "grey"],
+  "contrast": "low",
+  "rules": ["What works in this look and why, one short sentence each."],
+  "tags": ["archive"]
+}
