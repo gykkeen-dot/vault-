@@ -1,0 +1,58 @@
+{
+  "id": "look-001",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7652843820568055061",
+  "provenance": "Reference video, described from watched frames (user-provided). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "outer",
+      "item": "black utility parka with fur-trimmed hood",
+      "brand": ""
+    },
+    {
+      "slot": "top",
+      "item": "cream chunky knit sweater with wide ribbed cuffs over a black long sleeve",
+      "brand": ""
+    },
+    {
+      "slot": "neck",
+      "item": "dark green scarf wrapped over head and neck",
+      "brand": ""
+    },
+    {
+      "slot": "neck",
+      "item": "black scarf worn as a choker",
+      "brand": ""
+    },
+    {
+      "slot": "bottom",
+      "item": "rust-brown trousers (first outfit); baggy black trousers (second outfit)",
+      "brand": ""
+    },
+    {
+      "slot": "shoes",
+      "item": "worn grey low lace-up shoes",
+      "brand": ""
+    }
+  ],
+  "silhouette": "all-oversized",
+  "palette": [
+    "cream",
+    "dark green",
+    "rust",
+    "black",
+    "grey"
+  ],
+  "contrast": "low",
+  "rules": [
+    "Oversized knit on top of a slim black base; cuffs are the volume.",
+    "Scarf wrapped around head and neck turns an accessory into the focal point.",
+    "Earth tones (cream, green, rust) stay inside one warm family; black outfit variant stays monochrome.",
+    "Worn-in, soft textures throughout: knit, wool, fur trim, scuffed shoes."
+  ],
+  "tags": [
+    "archive",
+    "layered",
+    "autumn"
+  ],
+  "confirmed_by_author": false
+}

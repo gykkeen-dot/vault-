@@ -1,0 +1,51 @@
+{
+  "id": "look-004",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7486082730883697937",
+  "provenance": "Reference video, described from watched frames (similar (same creator)). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "outer",
+      "item": "grey chunky cardigan with wooden toggle buttons, fur collar underneath",
+      "brand": ""
+    },
+    {
+      "slot": "neck",
+      "item": "several long grey and beige scarves layered and draped, olive scarf wrapped over head and face",
+      "brand": ""
+    },
+    {
+      "slot": "accessory",
+      "item": "chain belt",
+      "brand": ""
+    },
+    {
+      "slot": "bottom",
+      "item": "light-blue jeans",
+      "brand": ""
+    },
+    {
+      "slot": "shoes",
+      "item": "dark brown shoes",
+      "brand": ""
+    }
+  ],
+  "silhouette": "long-layered",
+  "palette": [
+    "grey",
+    "beige",
+    "olive",
+    "light blue"
+  ],
+  "contrast": "low",
+  "rules": [
+    "Layering by length: scarves hang at different lengths to build a long vertical silhouette.",
+    "Grey-beige-olive stay in one muted family; the chain belt is the only metal.",
+    "Creator's own hashtags name LGB, Kapital and ISWN; per-piece brands unconfirmed."
+  ],
+  "tags": [
+    "archive",
+    "layered",
+    "scarves"
+  ],
+  "confirmed_by_author": false
+}

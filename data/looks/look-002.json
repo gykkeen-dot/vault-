@@ -1,0 +1,53 @@
+{
+  "id": "look-002",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7618690335086038292",
+  "provenance": "Reference video, described from watched frames (user-provided). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "outer",
+      "item": "long pale blue-grey zip hoodie jacket with exposed raw seams and patchwork panelling",
+      "brand": ""
+    },
+    {
+      "slot": "bottom",
+      "item": "light-wash baggy jeans pooling over the shoes",
+      "brand": ""
+    },
+    {
+      "slot": "shoes",
+      "item": "chunky multicolour sneakers (teal, blue, orange)",
+      "brand": ""
+    },
+    {
+      "slot": "bag",
+      "item": "dark backpack worn on one shoulder",
+      "brand": ""
+    },
+    {
+      "slot": "head",
+      "item": "dark balaclava covering the face",
+      "brand": ""
+    }
+  ],
+  "silhouette": "all-oversized",
+  "palette": [
+    "ice blue",
+    "denim",
+    "grey",
+    "teal",
+    "orange"
+  ],
+  "contrast": "low",
+  "rules": [
+    "Tonal cold blues from jacket to jeans; the only colour comes from the shoes.",
+    "Deconstructed outerwear (visible seams, patch panels) carries the interest, so everything else stays plain.",
+    "Wide jeans break over chunky shoes; the shoe is the heaviest point of the lower half.",
+    "Face covered: the clothes are the whole message."
+  ],
+  "tags": [
+    "deconstructed",
+    "winter",
+    "archive"
+  ],
+  "confirmed_by_author": false
+}

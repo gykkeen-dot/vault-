@@ -1,0 +1,56 @@
+{
+  "id": "look-003",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7597009650214538517",
+  "provenance": "Reference video, described from watched frames (user-provided). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "outer",
+      "item": "olive green hooded bomber/parka with an oversized hood",
+      "brand": ""
+    },
+    {
+      "slot": "top",
+      "item": "mustard-tan cable knit sweater",
+      "brand": ""
+    },
+    {
+      "slot": "neck",
+      "item": "dark gauze scarf over the face",
+      "brand": ""
+    },
+    {
+      "slot": "bottom",
+      "item": "pale grey wide trousers with a mustard side stripe",
+      "brand": ""
+    },
+    {
+      "slot": "shoes",
+      "item": "chunky sneakers with mustard and teal",
+      "brand": ""
+    },
+    {
+      "slot": "bag",
+      "item": "dark backpack",
+      "brand": ""
+    }
+  ],
+  "silhouette": "all-oversized",
+  "palette": [
+    "olive",
+    "mustard",
+    "pale grey",
+    "teal"
+  ],
+  "contrast": "medium",
+  "rules": [
+    "Three-colour earth palette (olive, mustard, pale grey); mustard repeats in the sweater, trouser stripe and shoes.",
+    "Knit layer peeks out under shorter outerwear to show a second texture.",
+    "Light trousers balance a dark, heavy top half."
+  ],
+  "tags": [
+    "archive",
+    "earth-tones",
+    "layered"
+  ],
+  "confirmed_by_author": false
+}

@@ -1,0 +1,49 @@
+{
+  "id": "look-007",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7556995673552424193",
+  "provenance": "Reference video, described from watched frames (similar (same creator)). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "outer",
+      "item": "grey duffle coat with toggles; grey cable-knit cardigan with elbow patches",
+      "brand": ""
+    },
+    {
+      "slot": "top",
+      "item": "mustard hooded sweatshirt under the cardigan",
+      "brand": ""
+    },
+    {
+      "slot": "bottom",
+      "item": "black bootcut trousers; dark distressed jeans; light jeans with cargo pockets",
+      "brand": ""
+    },
+    {
+      "slot": "shoes",
+      "item": "pointed black shoes; tan boots",
+      "brand": ""
+    },
+    {
+      "slot": "accessory",
+      "item": "scarf and dog tags; bag with cow print",
+      "brand": ""
+    }
+  ],
+  "silhouette": "slim-top/wide-bottom",
+  "palette": [
+    "grey",
+    "mustard",
+    "black",
+    "denim"
+  ],
+  "contrast": "medium",
+  "rules": [
+    "Knit cardigan over a hoodie: soft layers, mustard as the single warm accent.",
+    "One printed accessory (cow-print bag) against a plain outfit."
+  ],
+  "tags": [
+    "archive",
+    "knitwear"
+  ],
+  "confirmed_by_author": false
+}

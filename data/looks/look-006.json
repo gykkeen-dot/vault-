@@ -1,0 +1,43 @@
+{
+  "id": "look-006",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7598521950486514965",
+  "provenance": "Reference video, described from watched frames (similar (same creator)). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "outer",
+      "item": "olive parka; brown field jacket with cargo pants in dark olive",
+      "brand": ""
+    },
+    {
+      "slot": "bottom",
+      "item": "flared black trousers with buckle details",
+      "brand": ""
+    },
+    {
+      "slot": "top",
+      "item": "black fitted layered long sleeve",
+      "brand": ""
+    },
+    {
+      "slot": "shoes",
+      "item": "chunky dark boots",
+      "brand": ""
+    }
+  ],
+  "silhouette": "slim-top/wide-bottom",
+  "palette": [
+    "olive",
+    "brown",
+    "black"
+  ],
+  "contrast": "medium",
+  "rules": [
+    "Fitted black top against flared or cargo bottoms.",
+    "Olive and brown can share an outfit when black carries the rest."
+  ],
+  "tags": [
+    "utility",
+    "dark"
+  ],
+  "confirmed_by_author": false
+}

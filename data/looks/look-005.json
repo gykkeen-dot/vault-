@@ -1,0 +1,43 @@
+{
+  "id": "look-005",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7452341823114054928",
+  "provenance": "Reference video, described from watched frames (similar (same creator)). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "outer",
+      "item": "oversized dark jacket with olive trim",
+      "brand": ""
+    },
+    {
+      "slot": "top",
+      "item": "grey-brown shirt hanging long under the jacket",
+      "brand": ""
+    },
+    {
+      "slot": "bottom",
+      "item": "very wide dark grey trousers pooling at the hem",
+      "brand": ""
+    },
+    {
+      "slot": "head",
+      "item": "balaclava",
+      "brand": ""
+    }
+  ],
+  "silhouette": "all-oversized",
+  "palette": [
+    "charcoal",
+    "olive",
+    "grey-brown"
+  ],
+  "contrast": "low",
+  "rules": [
+    "A shirt hem hanging below the jacket adds a second layer line.",
+    "Extra-wide trousers cover the shoes: the leg reads as one long column."
+  ],
+  "tags": [
+    "gorpcore",
+    "wide-leg"
+  ],
+  "confirmed_by_author": false
+}

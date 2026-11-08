@@ -1,0 +1,43 @@
+{
+  "id": "look-008",
+  "source": "https://www.tiktok.com/@mpa3eu/video/7702151047984188692",
+  "provenance": "Reference video, described from watched frames (similar (same creator)). Brands not confirmed. Not yet confirmed by the author.",
+  "pieces": [
+    {
+      "slot": "bottom",
+      "item": "wide camouflage cargo trousers with a red scarf tied as a belt",
+      "brand": ""
+    },
+    {
+      "slot": "outer",
+      "item": "black puffer vest with a fur-trimmed hood",
+      "brand": ""
+    },
+    {
+      "slot": "top",
+      "item": "dark graphic tee (looks like Number (N)ine style print)",
+      "brand": ""
+    },
+    {
+      "slot": "shoes",
+      "item": "black boots",
+      "brand": ""
+    }
+  ],
+  "silhouette": "slim-top/wide-bottom",
+  "palette": [
+    "camo green",
+    "black",
+    "red"
+  ],
+  "contrast": "high",
+  "rules": [
+    "Camouflage carries the pattern, so top is plain black.",
+    "Red scarf belt is the one saturated accent."
+  ],
+  "tags": [
+    "streetwear",
+    "cargo"
+  ],
+  "confirmed_by_author": false
+}
