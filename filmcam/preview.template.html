@@ -57,6 +57,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:3px;bac
     <div class="chips" id="fxList"></div>
   </div>
   <p class="hint" id="hint">Showing a sample. The live camera runs in the app itself (filmcam/ folder), not here.</p>
+  <div class="panel" id="knobs" hidden></div>
   <div class="panel" id="maskPanel" hidden>
     <div class="maskrow">
       <div class="g"><span class="lab">Mode</span><div class="seg" id="mMode"><button data-m="erase" class="on">ERASE</button><button data-m="restore">RESTORE</button></div></div>
@@ -72,7 +73,8 @@ input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:3px;bac
 <script>
 /*SHADER*/
 /*MASK*/
-const st={effect:'bleach'};SLIDERS.forEach(s=>st[s[0]]=s[4]);
+const st={effect:'bleach',params:{}};function paramsOf(id){if(!st.params[id])st.params[id]=((EFFECTS.find(e=>e.id===id)||{p:[]}).p).map(k=>k[3]);return st.params[id]}
+SLIDERS.forEach(s=>st[s[0]]=s[4]);
 const $=id=>document.getElementById(id), cv=$('c');
 const frameEl=document.querySelector('.frame');
 const gl=cv.getContext('webgl2',{preserveDrawingBuffer:true,antialias:false});
@@ -108,6 +110,7 @@ function draw(){
   gl.uniform2f(U.uTexel,1/W,1/H);gl.uniform2f(U.uRes,W,H);gl.uniform2f(U.uGrainOff,Math.random(),Math.random());
   gl.uniform2f(U.uCrop,1,1);gl.uniform1f(U.uMirror,0);gl.uniform1f(U.uTime,(performance.now()/1000)%1000);
   const fx=EFFECTS.find(e=>e.id===st.effect);gl.uniform1f(U.uEffect,fx?fx.n:0);
+  const kp=fx?paramsOf(fx.id):[];gl.uniform4f(U.uP,kp[0]||0,kp[1]||0,kp[2]||0,kp[3]||0);
   SLIDERS.forEach(s=>gl.uniform1f(U[s[5]],st[s[0]]));
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
 }
@@ -135,15 +138,31 @@ SLIDERS.forEach(([id,label,mn,mx])=>{
 });
 const box=$('fxList');let tab='presets';
 function addChip(id,name){const b=document.createElement('button');b.className='chip'+(id===st.effect?' on':'');b.textContent=name;b.dataset.fx=id;
-  b.addEventListener('click',()=>{st.effect=id;box.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.fx===id));render()});box.appendChild(b)}
+  b.addEventListener('click',()=>{st.effect=id;box.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.fx===id));buildKnobs();render()});box.appendChild(b)}
 function buildChips(){
   box.innerHTML='';addChip('none','Original');let grp='';
   EFFECTS.filter(e=>e.tab===tab&&!e.fb).forEach(e=>{if(e.group!==grp){grp=e.group;const s=document.createElement('span');s.className='sep';s.textContent=grp;box.appendChild(s)}addChip(e.id,e.name)});
+}
+function buildKnobs(){
+  const fx=EFFECTS.find(e=>e.id===st.effect),kb=$('knobs');kb.innerHTML='';
+  kb.hidden=!(fx&&fx.p.length&&tab!=='mask');if(kb.hidden)return;
+  const vals=paramsOf(fx.id);
+  const h=document.createElement('div');h.className='maskrow';h.innerHTML='<span class="lab">Tune · '+fx.name+'</span><button class="ghost" id="kReset">RESET</button>';kb.appendChild(h);
+  fx.p.forEach(([label,mn,mx,def],i)=>{
+    const whole=Number.isInteger(def)&&Number.isInteger(mn)&&mx-mn>=6;
+    const r=document.createElement('div');r.className='row';
+    r.innerHTML='<label for="k'+i+'">'+label+'</label><input type="range" id="k'+i+'" min="'+mn+'" max="'+mx+'" step="'+(whole?1:(mx-mn)/200)+'"><span class="v"></span>';
+    const inp=r.querySelector('input'),v=r.querySelector('.v');
+    const sh=()=>{inp.value=vals[i];v.textContent=whole?vals[i]:(+vals[i]).toFixed(Math.abs(mx-mn)<0.2?3:2)};
+    inp.addEventListener('input',()=>{vals[i]=parseFloat(inp.value);sh();render()});sh();kb.appendChild(r);
+  });
+  $('kReset').addEventListener('click',()=>{st.params[fx.id]=fx.p.map(k=>k[3]);buildKnobs();render()});
 }
 function setTab(n){
   tab=n;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===n));
   const isMask=n==='mask';box.hidden=isMask;$('maskPanel').hidden=!isMask;mask.setEnabled(isMask);
   if(!isMask)buildChips();
+  buildKnobs();
 }
 document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
 buildChips();

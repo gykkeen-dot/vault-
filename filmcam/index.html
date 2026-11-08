@@ -32,10 +32,16 @@
   <section class="deck">
     <div class="drawer" id="panel" hidden>
       <div class="tabs" id="tabs">
-        <button data-tab="presets" class="on">PRESETS</button><button data-tab="touch">TOUCH</button><button data-tab="adjust">ADJUST</button><button data-tab="mask">MASK</button>
+        <button data-tab="presets" class="on">PRESETS</button><button data-tab="touch">TOUCH</button><button data-tab="my">MY</button><button data-tab="adjust">ADJUST</button><button data-tab="mask">MASK</button>
       </div>
       <div id="pane-presets"><div class="chips" id="fxPresets"></div></div>
       <div id="pane-touch" hidden><div class="chips" id="fxTouch"></div></div>
+      <div id="pane-my" hidden>
+        <div class="saverow"><input id="pName" maxlength="24" placeholder="Preset name" autocomplete="off"><button id="pSave" class="link">SAVE</button></div>
+        <div class="chips" id="myList"></div>
+        <p class="hint">Saves the selected effect, its knobs and the Adjust sliders. Same name overwrites.</p>
+      </div>
+      <div id="knobs" class="knobs" hidden></div>
       <div id="pane-adjust" hidden>
         <div class="drawer-head">
           <label><input type="checkbox" id="eco"> Eco</label>
@@ -44,39 +50,24 @@
         <div id="sliders"></div>
       </div>
       <div id="pane-mask" hidden>
-        <p class="hint">Paint on the picture. Erase shows the original, Restore brings the effect back.</p>
         <div class="maskrow">
-          <div class="group"><span class="lab">Mode</span>
-            <div class="seg" id="mMode"><button data-m="erase" class="on">ERASE</button><button data-m="restore">RESTORE</button></div></div>
-          <div class="group"><span class="lab">Tool</span>
-            <div class="seg" id="mTool"><button data-tool="brush" class="on">BRUSH</button><button data-tool="shape">SHAPE</button></div></div>
+          <div class="seg" id="mMode"><button data-m="erase" class="on">ERASE</button><button data-m="restore">RESTORE</button></div>
+          <div class="seg" id="mTool"><button data-tool="brush" class="on">BRUSH</button><button data-tool="shape">SHAPE</button></div>
         </div>
         <div class="row"><label for="mSize">Size</label><input type="range" id="mSize" min="5" max="150" value="50"><span class="v" id="mSizeV">50</span></div>
         <div class="row"><label for="mOpacity">Opacity</label><input type="range" id="mOpacity" min="0" max="100" value="100"><span class="v" id="mOpacityV">100</span></div>
         <div class="row"><label for="mHard">Hardness</label><input type="range" id="mHard" min="0" max="100" value="70"><span class="v" id="mHardV">70</span></div>
-        <div class="maskrow">
-          <button id="mInvert" class="link">INVERT</button><button id="mReset" class="link">RESET MASK</button>
-        </div>
+        <div class="maskrow"><button id="mInvert" class="link">INVERT</button><button id="mReset" class="link">RESET MASK</button></div>
       </div>
     </div>
 
     <div class="rack">
-      <div class="group"><span class="lab">Zoom</span>
-        <div class="seg" id="zoomSeg">
-          <button data-zoom="0.5">0.5</button><button data-zoom="1" class="on">1×</button><button data-zoom="2">2×</button><button data-zoom="3">3×</button>
-        </div></div>
-      <div class="group"><span class="lab">Camera</span>
-        <div class="seg" id="camSeg">
-          <button data-cam="environment" class="on">BACK</button><button data-cam="user">FRONT</button>
-        </div></div>
-      <div class="group"><span class="lab">Frame</span>
-        <div class="seg" id="arSeg">
-          <button data-ar="9:16" class="on">9:16</button><button data-ar="4:3">4:3</button><button data-ar="1:1">1:1</button>
-        </div></div>
-      <div class="group"><span class="lab">Timer</span>
-        <div class="seg" id="timerSeg">
-          <button data-t="0" class="on">OFF</button><button data-t="3">3S</button><button data-t="10">10S</button>
-        </div></div>
+      <div class="seg" id="zoomSeg" aria-label="Zoom">
+        <button data-zoom="0.5">.5</button><button data-zoom="1" class="on">1×</button><button data-zoom="2">2×</button><button data-zoom="3">3×</button>
+      </div>
+      <button class="cyc" id="arBtn" aria-label="Aspect ratio">9:16</button>
+      <button class="cyc" id="timerBtn" aria-label="Timer">OFF</button>
+      <button class="cyc" id="camBtn" aria-label="Switch camera">BACK</button>
     </div>
 
     <div class="main">

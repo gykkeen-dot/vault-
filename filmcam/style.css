@@ -92,3 +92,32 @@ input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:3px;bac
 .maskrow{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0}
 .maskrow .link{background:none;border:1px solid var(--line);border-radius:6px;padding:8px 12px;font-size:11px;letter-spacing:.1em}
 .ring{position:absolute;border:2px solid var(--signal);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 8px var(--glow)}
+
+/* ---- compact layout ---- */
+.hud{height:26px;padding:0 14px}
+.viewport{padding:6px 12px}
+.deck{padding:8px 12px calc(10px + var(--safe-b));border-radius:16px 16px 0 0}
+.rack{display:flex;gap:6px;margin:0 0 8px;align-items:stretch;justify-content:stretch}
+.rack .seg{flex:1.6}.rack .seg button{flex:1;min-width:0;padding:0}
+.cyc{flex:1;min-width:0;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--white);font-size:11px;letter-spacing:.08em;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.cyc:disabled{opacity:.35}
+.cyc:active{border-color:var(--signal)}
+.side{width:46px;height:46px;font-size:11px}
+.shutter{width:62px;height:62px}
+.drawer{padding:8px 10px;margin-bottom:8px;max-height:38dvh}
+.tabs{margin-bottom:8px}.tabs button{height:26px;font-size:9px;letter-spacing:.06em}
+.chips{gap:5px}.chip{padding:5px 8px;font-size:10px}
+.chips .sep{padding:4px 2px 0}
+.row{grid-template-columns:84px minmax(0,1fr) 38px;gap:6px;font-size:10px}
+input[type=range]{height:22px}
+.sliders,#sliders{display:grid;gap:0}
+.knobs{border-top:1px solid var(--line);margin-top:8px;padding-top:6px;position:sticky;bottom:-8px;background:var(--white);z-index:1;padding-bottom:4px}
+.kh{display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:.14em;color:var(--mute);margin-bottom:2px}
+.kh .link,.saverow .link{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:10px;letter-spacing:.1em}
+.saverow{display:flex;gap:6px;margin-bottom:8px}
+.saverow input{flex:1;min-width:0;height:32px;border:1px solid var(--line);border-radius:8px;padding:0 10px;font:11px var(--mono);letter-spacing:.04em;color:var(--ink);background:var(--white)}
+.chip.my{display:inline-flex;padding:0;overflow:hidden}
+.chip.my button{border:0;background:none;padding:5px 8px;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit}
+.chip.my .x{padding:5px 8px;border-left:1px solid var(--line);color:var(--mute)}
+.maskrow{margin:6px 0;gap:8px}.maskrow .seg{margin:0}
+.hint{margin:6px 0 0}

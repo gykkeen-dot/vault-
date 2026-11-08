@@ -31,3 +31,9 @@ Workflow `.github/workflows/pages.yml` выкладывает папку `filmca
 - TOUCH: Warp (Kaleidoscope, Mirror Quad, Tunnel, Swirl, Bulge, Ripple, Noise Warp, Tile Grid, Wave, Glitch Blocks), Style (RGB Split, Neon Edges, Halftone, Dither, ASCII, Mosaic, Hex Pixels, LED Matrix, Cel Edges, Duotone Flow, Wire Grid, Zoom Blur, Pointillize, Hue Cycle, Bloom), Feedback (Echo Trails, Feedback Tunnel; второй проход с историей кадра, только в приложении, не в превью и не в фото).
 - MASK: кисть Size / Opacity / Hardness, режимы Erase / Restore, инструменты Brush / Shape, Invert, Reset. Маска хранится 512x512 в долях кадра и работает вместе с Intensity.
 - Код: `shader.js` (шейдеры и списки эффектов), `mask.js` (кисть).
+
+## Этап 4b (компактность, оптимизация, правка пресетов)
+- Нижняя панель вдвое ниже: зум (.5/1/2/3) и кнопки-переключатели формата, таймера, камеры в одну строку.
+- Вкладки FX: PRESETS, TOUCH, MY, ADJUST, MASK. У каждого эффекта свои ручки (блок TUNE внизу панели): размер ячейки, скорость, количество сегментов и т. д. Список в `PARAMS` (`shader.js`).
+- MY: сохранение своего пресета (эффект + ручки + ползунки Adjust) в localStorage браузера, повторное сохранение с тем же именем перезаписывает, × удаляет. Экспорта в файл пока нет.
+- Оптимизации: обновление видеотекстуры через texSubImage2D, кеш юниформов и найденного эффекта, перерисовка оверлея маски не чаще раза за кадр.

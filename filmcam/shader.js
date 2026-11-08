@@ -21,6 +21,7 @@ uniform float uMirror;    // 1 = mirror (front camera)
 uniform float uTime;      // seconds
 uniform float uEffect;    // effect number, 0 = none
 uniform float uMaskOn;    // 1 = use uMask
+uniform vec4 uP;          // per-effect knobs (see PARAMS)
 uniform float uIntensity, uContrast, uBrightness, uSaturation, uTemperature, uTint;
 uniform float uHighlights, uShadows, uSharpness, uBlur, uGrain, uGrainSize, uVignette, uFade;
 
@@ -89,41 +90,41 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
   if (fx == 1) { // Bleach Bypass
     float k = clamp((l - 0.45) * 10.0, 0.0, 1.0);
     vec3 ov = mix(2.0 * c * l, 1.0 - 2.0 * (1.0 - c) * (1.0 - l), k);
-    return (mix(vec3(l), c, 0.45) * 0.3 + ov * 0.7) * 1.05;
+    return (mix(vec3(l), c, uP.x) * 0.3 + ov * 0.7) * 1.05;
   }
   if (fx == 2) { // Doll House: soft, pink, airy
     c = c * 1.12 + 0.05;
     c = satur(c, 1.15) * vec3(1.08, 0.95, 1.04);
     c = (c - 0.5) * 0.82 + 0.5;
-    c = mix(c, vec3(1.0, 0.84, 0.92), 0.10);
+    c = mix(c, vec3(1.0, 0.84, 0.92), uP.x);
     return c + max(c - 0.7, 0.0) * 0.35;
   }
   if (fx == 3) { // Jet Black: deep contrasty mono
-    float m = smoothstep(0.16, 0.86, l);
+    float m = smoothstep(uP.x, 0.86, l);
     return vec3(pow(m, 1.15)) * vec3(1.0, 1.0, 1.02);
   }
   if (fx == 4) { // Teal & Orange
     vec3 tint = mix(vec3(0.62, 1.0, 1.12), vec3(1.2, 1.0, 0.78), smoothstep(0.2, 0.8, l));
-    c = c * tint;
+    c = c * mix(vec3(1.0), tint, uP.x);
     return (c - 0.5) * 1.15 + 0.5;
   }
   if (fx == 5) { // Solarize
-    vec3 s = mix(c, 1.0 - c, smoothstep(0.45, 0.55, c));
-    return s * 1.8;
+    vec3 s = mix(c, 1.0 - c, smoothstep(uP.x - 0.05, uP.x + 0.05, c));
+    return s * (0.9 / max(uP.x, 0.2));
   }
   if (fx == 6) { // Candy
-    c = satur(c, 1.55) * vec3(1.05, 0.95, 1.1) + 0.06;
+    c = satur(c, uP.x) * vec3(1.05, 0.95, 1.1) + 0.06;
     return pow(max(c, 0.0), vec3(0.85));
   }
   if (fx == 7) { // CCD: early digicam, bright, cool shadows, bloom-y highlights
-    c = c * 1.25;
+    c = c * uP.x;
     c = (c - 0.5) * 1.15 + 0.5;
     c = satur(c, 1.3);
     c += vec3(-0.02, 0.0, 0.06) * (1.0 - l);
     return mix(c, vec3(1.0), smoothstep(0.85, 1.0, l) * 0.3);
   }
   if (fx == 8) { // CCD Flash: harsh direct flash
-    float f = 1.0 - smoothstep(0.12, 0.95, rad());
+    float f = 1.0 - smoothstep(0.12, uP.x, rad());
     c = c * (0.3 + 1.15 * f);
     c = (c - 0.5) * 1.25 + 0.5;
     c = satur(c, 1.2);
@@ -143,7 +144,7 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
     return c + (nz(1.0) - 0.5) * 0.05;
   }
   if (fx == 11) { // 3GS: warm, soft, lifted blacks
-    c = c * vec3(1.08, 1.03, 0.88);
+    c = c * mix(vec3(1.0), vec3(1.08, 1.03, 0.88), uP.x);
     c = satur(c, 0.85);
     c = (c - 0.5) * 0.9 + 0.5 + 0.04;
     return c * (1.0 - 0.25 * smoothstep(0.4, 0.9, rad()));
@@ -152,16 +153,16 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
     c = c * vec3(0.92, 1.05, 1.0);
     c = satur(c, 0.75);
     c = (c - 0.5) * 0.85 + 0.5 + 0.04;
-    return c + (nz(1.0) - 0.5) * 0.12;
+    return c + (nz(1.0) - 0.5) * uP.y;
   }
   if (fx == 13) { // Polaroid: faded, warm highlights, greenish shadows
-    c = c * 0.88 + 0.10;
+    c = c * (1.0 - uP.x * 1.2) + uP.x;
     c = mix(c * vec3(0.95, 1.0, 1.0), c * vec3(1.06, 1.0, 0.88), smoothstep(0.2, 0.8, l));
     c = satur(c, 0.85);
     return c * (1.0 - 0.2 * smoothstep(0.4, 0.9, rad()));
   }
   if (fx == 14) { // Disposable: warm cast, flash falloff, punchy
-    c = c * vec3(1.1, 1.05, 0.85);
+    c = c * mix(vec3(1.0), vec3(1.1, 1.05, 0.85), uP.x);
     c = (c - 0.5) * 1.2 + 0.5;
     c = satur(c, 1.15);
     c.g += 0.03 * (1.0 - l);
@@ -171,7 +172,7 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
   if (fx == 15) { // VHS: scanlines, noise bands, washed color
     c = satur(c, 0.8);
     c += vec3(0.04, 0.0, 0.05) * (1.0 - l);
-    float sl = 0.88 + 0.12 * sin(vUv.y * uRes.y * 3.14159);
+    float sl = (1.0 - uP.y) + uP.y * sin(vUv.y * uRes.y * 3.14159);
     float band = texture(uNoise, vec2(0.37, floor(vUv.y * 240.0) / 240.0 + uTime)).r;
     c += (band - 0.5) * 0.08;
     c = c * sl + 0.03;
@@ -183,10 +184,10 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
     return vec3(0.75, 1.0, 0.8) * m * sl + (nz(1.0) - 0.5) * 0.1;
   }
   if (fx == 17) { // Thermal
-    return heat(clamp((l - 0.08) * 1.15, 0.0, 1.0));
+    return heat(clamp((l - uP.x) * 1.15, 0.0, 1.0));
   }
   if (fx == 18) { // Night vision
-    float m = pow(clamp(l * 1.8, 0.0, 1.0), 0.8);
+    float m = pow(clamp(l * uP.x, 0.0, 1.0), 0.8);
     vec3 g = vec3(0.1, 1.0, 0.2) * m + (nz(1.0) - 0.5) * 0.2;
     float sl = 0.93 + 0.07 * sin(vUv.y * uRes.y * 3.14159);
     return g * sl * (1.0 - smoothstep(0.5, 0.85, rad()));
@@ -194,27 +195,27 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
   // ---- TouchDesigner-style ----
   if (fx == 110) { vec2 o = vec2(0.004, 0.0); return vec3(texture(uTex, uv + o).r, c.g, texture(uTex, uv - o).b); }
   if (fx == 111) { // RGB Split
-    vec2 o = vec2(cos(uTime * 1.3), sin(uTime * 1.3)) * (0.006 + 0.004 * sin(uTime * 3.0));
+    vec2 o = vec2(cos(uTime * uP.y), sin(uTime * uP.y)) * (uP.x * (0.75 + 0.5 * sin(uTime * 3.0)));
     return vec3(texture(uTex, uv + o).r, c.g, texture(uTex, uv - o).b);
   }
   if (fx == 112) { // Neon Edges
-    float e = edgeAt(uv, 1.5);
-    return c * 0.18 + pal(l * 1.5 + uTime * 0.15 + e) * smoothstep(0.03, 0.25, e) * 2.2;
+    float e = edgeAt(uv, uP.x);
+    return c * 0.18 + pal(l * 1.5 + uTime * uP.z + e) * smoothstep(0.03, 0.25, e) * uP.y;
   }
   if (fx == 113) { // Halftone
-    float s = 9.0; vec2 p = vUv * uRes / s; vec2 cl = floor(p); vec2 f = fract(p) - 0.5;
+    float s = uP.x; vec2 p = vUv * uRes / s; vec2 cl = floor(p); vec2 f = fract(p) - 0.5;
     vec3 cc = texture(uTex, toSrc((cl + 0.5) * s / uRes)).rgb;
     float r = 0.12 + 0.55 * sqrt(1.0 - luma(cc));
     return mix(vec3(0.96, 0.94, 0.90), cc * 0.7, smoothstep(r + 0.06, r - 0.06, length(f)));
   }
   if (fx == 114) { // Dither
     float B[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-    ivec2 ip = ivec2(mod(floor(vUv * uRes / 3.0), 4.0));
+    ivec2 ip = ivec2(mod(floor(vUv * uRes / max(uP.x, 1.0)), 4.0));
     float t = (B[ip.x + 4 * ip.y] + 0.5) / 16.0;
     return mix(vec3(0.02, 0.03, 0.10), vec3(0.45, 1.0, 0.98), step(t, l));
   }
   if (fx == 115) { // ASCII
-    vec2 cs = vec2(8.0, 14.0); vec2 p = vUv * uRes / cs; vec2 cl = floor(p), f = fract(p);
+    vec2 cs = vec2(uP.x, uP.x * 1.75); vec2 p = vUv * uRes / cs; vec2 cl = floor(p), f = fract(p);
     vec3 cc = texture(uTex, toSrc((cl + 0.5) * cs / uRes)).rgb; float li = luma(cc);
     float gph = 0.0;
     if (li > 0.80) gph = step(abs(f.x - 0.5), 0.38) * step(abs(f.y - 0.5), 0.42);
@@ -225,13 +226,13 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
     return mix(vec3(0.0, 0.02, 0.03), mix(vec3(0.25, 1.0, 0.9), cc * 1.4, 0.45), clamp(gph, 0.0, 1.0));
   }
   if (fx == 116) { // Mosaic (Voronoi)
-    float N = 16.0; vec2 sz = vec2(N * asp, N); float d1, d2;
+    float N = uP.x; vec2 sz = vec2(N * asp, N); float d1, d2;
     vec2 ctr = voro(vUv * sz, d1, d2);
     vec3 cc = texture(uTex, toSrc(ctr / sz)).rgb;
     return cc * mix(0.35, 1.0, smoothstep(0.0, 0.08, d2 - d1));
   }
   if (fx == 117) { // Hex Pixels
-    float S = 18.0; vec2 sz = vec2(S * asp, S); vec2 p = vUv * sz;
+    float S = uP.x; vec2 sz = vec2(S * asp, S); vec2 p = vUv * sz;
     vec2 r = vec2(1.0, 1.7320508); vec2 h = r * 0.5;
     vec2 a = mod(p, r) - h; vec2 b = mod(p - h, r) - h;
     vec2 gv = dot(a, a) < dot(b, b) ? a : b;
@@ -239,41 +240,41 @@ vec3 fxApply(int fx, vec3 c, vec2 cell, vec2 uv){
     return cc * mix(0.55, 1.0, smoothstep(0.52, 0.40, length(gv)));
   }
   if (fx == 118) { // LED Matrix
-    vec2 p = vUv * uRes / 10.0; vec2 f = fract(p) - 0.5;
-    vec3 cc = texture(uTex, toSrc((floor(p) + 0.5) * 10.0 / uRes)).rgb;
+    vec2 p = vUv * uRes / uP.x; vec2 f = fract(p) - 0.5;
+    vec3 cc = texture(uTex, toSrc((floor(p) + 0.5) * uP.x / uRes)).rgb;
     return cc * 1.4 * smoothstep(0.44, 0.30, length(f)) + 0.02;
   }
   if (fx == 119) { // Cel Edges
-    vec3 q3 = satur(floor(c * 4.0 + 0.5) / 4.0, 1.3);
-    return q3 * (1.0 - smoothstep(0.15, 0.5, edgeAt(uv, 1.2)));
+    vec3 q3 = satur(floor(c * uP.x + 0.5) / uP.x, 1.3);
+    return q3 * (1.0 - uP.y * smoothstep(0.15, 0.5, edgeAt(uv, 1.2)));
   }
   if (fx == 120) { // Duotone Flow
-    return mix(pal(uTime * 0.05) * 0.12, pal(uTime * 0.05 + 0.45), smoothstep(0.05, 0.95, l));
+    return mix(pal(uTime * uP.x) * 0.12, pal(uTime * uP.x + uP.y), smoothstep(0.05, 0.95, l));
   }
   if (fx == 121) { // Wire Grid
-    vec2 g = fract(vUv * uRes / 26.0);
-    float ln = max(step(g.x, 0.06), step(g.y, 0.06));
+    vec2 g = fract(vUv * uRes / uP.x);
+    float ln = max(step(g.x, uP.y), step(g.y, uP.y));
     return c * 0.22 + ln * vec3(0.1, 0.9, 1.0) * (0.25 + 0.9 * l);
   }
   if (fx == 122) { // Zoom Blur
     vec3 acc = vec3(0.0);
-    for (int i = 0; i < 12; i++) acc += texture(uTex, toSrc((vUv - 0.5) * (1.0 - float(i) * 0.014) + 0.5)).rgb;
+    for (int i = 0; i < 12; i++) acc += texture(uTex, toSrc((vUv - 0.5) * (1.0 - float(i) * uP.x) + 0.5)).rgb;
     return acc / 12.0 * 1.15 + max(c - 0.6, 0.0) * 0.3;
   }
   if (fx == 123) { // Pointillize
-    float N = 34.0; vec2 sz = vec2(N * asp, N); float d1, d2;
+    float N = uP.x; vec2 sz = vec2(N * asp, N); float d1, d2;
     vec2 ctr = voro(vUv * sz, d1, d2);
     vec3 cc = texture(uTex, toSrc(ctr / sz)).rgb;
-    return mix(vec3(0.96, 0.94, 0.90), cc * 1.1, smoothstep(0.42, 0.34, d1));
+    return mix(vec3(0.96, 0.94, 0.90), cc * 1.1, smoothstep(uP.y, uP.y - 0.08, d1));
   }
-  if (fx == 124) return hueRot(satur(c, 1.3), uTime * 0.9); // Hue Cycle
+  if (fx == 124) return hueRot(satur(c, uP.y), uTime * uP.x); // Hue Cycle
   if (fx == 125) { // Bloom
     vec3 acc = vec3(0.0);
     for (int i = 0; i < 12; i++) {
       float an = float(i) * 2.39996; float rr = sqrt(float(i) + 0.5) / 3.5;
-      acc += max(texture(uTex, uv + vec2(cos(an), sin(an)) * rr * uTexel * 14.0).rgb - 0.55, 0.0);
+      acc += max(texture(uTex, uv + vec2(cos(an), sin(an)) * rr * uTexel * uP.z).rgb - uP.x, 0.0);
     }
-    return c * 0.95 + acc / 12.0 * 2.4;
+    return c * 0.95 + acc / 12.0 * uP.y;
   }
   if (fx == 126) return satur(c, 1.25);                  // Echo Trails (base look)
   if (fx == 127) return satur(hueRot(c, 0.2), 1.3);      // Feedback Tunnel (base look)
@@ -285,10 +286,10 @@ vec2 geo(int fx, vec2 q, out vec2 cell){
   float asp = uRes.x / uRes.y;
   if (fx == 15) q.x += sin(vUv.y * 30.0 + uTime * 2.0) * 0.0015 + step(0.97, fract(vUv.y * 3.0 - uTime * 0.2)) * 0.01;
   float cols = 0.0;
-  if (fx == 9) cols = 84.0;
-  else if (fx == 10) cols = 240.0;
-  else if (fx == 12) cols = 320.0;
-  else if (fx == 16) cols = 280.0;
+  if (fx == 9) cols = uP.x;
+  else if (fx == 10) cols = uP.x;
+  else if (fx == 12) cols = uP.x;
+  else if (fx == 16) cols = uP.x;
   vec2 g = vec2(1.0);
   if (cols > 0.0) {
     g = vec2(cols, cols / asp);
@@ -301,29 +302,29 @@ vec2 geo(int fx, vec2 q, out vec2 cell){
     float r = length(p);
     bool useP = true;
     if (fx == 101) { // Kaleidoscope
-      float w = PI * 2.0 / 6.0;
-      float a = mod(atan(p.y, p.x) + uTime * 0.15, w);
+      float w = PI * 2.0 / floor(uP.x + 0.5);
+      float a = mod(atan(p.y, p.x) + uTime * uP.y, w);
       a = abs(a - w * 0.5);
       p = 0.6 * r * vec2(cos(a), sin(a));
     } else if (fx == 102) { // Mirror Quad
       p = abs(p);
     } else if (fx == 103) { // Tunnel
-      q = vec2(abs(atan(p.y, p.x)) / PI, 0.3 / max(r, 0.04) - uTime * 0.35); useP = false;
+      q = vec2(abs(atan(p.y, p.x)) / PI, uP.y / max(r, 0.04) - uTime * uP.x); useP = false;
     } else if (fx == 104) { // Swirl
-      p = rot((1.0 - smoothstep(0.0, 0.9, r)) * (2.5 + 1.5 * sin(uTime * 0.6))) * p;
+      p = rot((1.0 - smoothstep(0.0, 0.9, r)) * (uP.x * (0.7 + 0.3 * sin(uTime * 0.6)))) * p;
     } else if (fx == 105) { // Bulge
-      p *= 0.55 + 0.45 * smoothstep(0.0, 1.0, r * 1.2);
+      p *= (1.0 - uP.x) + uP.x * smoothstep(0.0, 1.0, r * 1.2);
     } else if (fx == 106) { // Ripple
-      p += (r > 0.001 ? p / r : vec2(0.0)) * sin(r * 45.0 - uTime * 5.0) * 0.012 * (1.0 - smoothstep(0.0, 1.2, r));
+      p += (r > 0.001 ? p / r : vec2(0.0)) * sin(r * uP.x - uTime * uP.z) * uP.y * (1.0 - smoothstep(0.0, 1.2, r));
     } else if (fx == 107) { // Noise Warp
-      p += (vec2(vnoise(p * 3.0 + uTime * 0.2), vnoise(p * 3.0 + 7.0 + uTime * 0.2)) - 0.5) * 0.18;
+      p += (vec2(vnoise(p * uP.x + uTime * uP.z), vnoise(p * uP.x + 7.0 + uTime * uP.z)) - 0.5) * uP.y;
     } else if (fx == 108) { // Tile Grid
-      q = fract(q * 3.0); useP = false;
+      q = fract(q * uP.x); useP = false;
     } else if (fx == 109) { // Wave
-      q.x += sin(q.y * 12.0 + uTime * 2.0) * 0.02; q.y += sin(q.x * 10.0 + uTime * 1.7) * 0.02; useP = false;
+      q.x += sin(q.y * uP.y + uTime * uP.z) * uP.x; q.y += sin(q.x * uP.y * 0.83 + uTime * uP.z * 0.85) * uP.x; useP = false;
     } else { // 110 Glitch Blocks
-      float by = floor(q.y * 18.0), t = floor(uTime * 7.0);
-      q.x += step(0.86, hash21(vec2(by, t))) * (hash21(vec2(by, t + 11.0)) - 0.5) * 0.3;
+      float by = floor(q.y * 18.0), t = floor(uTime * uP.y);
+      q.x += step(1.0 - uP.x, hash21(vec2(by, t))) * (hash21(vec2(by, t + 11.0)) - 0.5) * 0.3;
       vec2 bk = floor(q * vec2(6.0, 8.0));
       q += step(0.95, hash21(bk + vec2(3.0, t))) * (hash22(bk) - 0.5) * 0.2;
       useP = false;
@@ -337,7 +338,7 @@ vec2 geo(int fx, vec2 q, out vec2 cell){
 vec3 pre(vec2 uv, int fx){
   vec3 c = texture(uTex, uv).rgb;
   if (fx == 15) { // VHS chroma shift
-    vec2 o = vec2(0.004, 0.0);
+    vec2 o = vec2(uP.x, 0.0);
     c.r = texture(uTex, uv + o).r;
     c.b = texture(uTex, uv - o).b;
   }
@@ -407,6 +408,7 @@ uniform sampler2D uPrev;
 uniform float uMode;    // 0 = copy, 1 = echo trails, 2 = feedback tunnel
 uniform float uAspect;
 uniform float uReset;   // 1 = no history yet
+uniform vec4 uP;        // echo: decay, hue | tunnel: decay, rotation, zoom
 float luma(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 vec3 hueRot(vec3 c, float a){
   vec3 k = vec3(0.57735);
@@ -418,13 +420,13 @@ void main(){
   vec2 p = (vUv - 0.5) * vec2(uAspect, 1.0);
   if (uMode < 1.5) {
     vec3 prev = texture(uPrev, p * 0.994 / vec2(uAspect, 1.0) + 0.5).rgb;
-    prev = hueRot(prev, 0.07) * 0.94;
+    prev = hueRot(prev, uP.y) * uP.x;
     outColor = vec4(max(cur, prev), 1.0);
   } else {
-    float a = 0.015, s = sin(a), c = cos(a);
-    p = mat2(c, -s, s, c) * p * 0.985;
+    float a = uP.y, s = sin(a), c = cos(a);
+    p = mat2(c, -s, s, c) * p * uP.z;
     vec3 prev = texture(uPrev, p / vec2(uAspect, 1.0) + 0.5).rgb;
-    prev = hueRot(prev, 0.04) * 0.97;
+    prev = hueRot(prev, 0.04) * uP.x;
     float m = smoothstep(0.35, 0.7, luma(cur));
     outColor = vec4(max(mix(prev, cur, 0.15), cur * m), 1.0);
   }
@@ -496,3 +498,29 @@ export const EFFECTS = [
   { id: 'echo', n: 126, name: 'Echo Trails', group: 'Feedback', tab: 'touch', fb: true, fbMode: 1 },
   { id: 'fbtunnel', n: 127, name: 'Feedback Tunnel', group: 'Feedback', tab: 'touch', fb: true, fbMode: 2 },
 ];
+
+// Per-effect knobs: [label, min, max, default]. Sent to the shader as uP (up to 4).
+const PARAMS = {
+  bleach: [['Color keep', 0, 1, 0.45]], dollhouse: [['Pink', 0, 0.4, 0.10]], jetblack: [['Black point', 0, 0.5, 0.16]],
+  tealorange: [['Strength', 0, 1.5, 1]], solarize: [['Threshold', 0.2, 0.8, 0.5]], candy: [['Saturation', 1, 2.5, 1.55]],
+  ccd: [['Exposure', 0.8, 1.8, 1.25]], ccdflash: [['Flash reach', 0.2, 1.2, 0.95]],
+  nokia: [['Pixels across', 40, 160, 84]], motorola: [['Pixels across', 80, 480, 240]], '3gs': [['Warmth', 0, 1.5, 1]],
+  webcam: [['Pixels across', 120, 640, 320], ['Noise', 0, 0.3, 0.12]], polaroid: [['Fade', 0, 0.3, 0.10]], disposable: [['Warmth', 0, 1.5, 1]],
+  vhs: [['Color bleed', 0, 0.02, 0.004], ['Scanlines', 0, 0.3, 0.12]], surveillance: [['Pixels across', 100, 560, 280]],
+  thermal: [['Cold point', 0, 0.3, 0.08]], nightvision: [['Gain', 1, 4, 1.8]],
+  kaleido: [['Segments', 3, 16, 6], ['Spin', -1, 1, 0.15]], mirrorquad: [],
+  tunnel: [['Speed', -2, 2, 0.35], ['Depth', 0.1, 1, 0.3]], swirl: [['Twist', 0, 6, 3.5]], bulge: [['Amount', 0, 1, 0.45]],
+  ripple: [['Frequency', 10, 90, 45], ['Height', 0, 0.05, 0.012], ['Speed', 0, 10, 5]],
+  noisewarp: [['Scale', 1, 8, 3], ['Amount', 0, 0.5, 0.18], ['Speed', 0, 1, 0.2]], tilegrid: [['Tiles', 1, 8, 3]],
+  wave: [['Height', 0, 0.1, 0.02], ['Frequency', 2, 30, 12], ['Speed', 0, 6, 2]], glitch: [['Amount', 0, 0.5, 0.14], ['Rate', 1, 20, 7]],
+  rgbsplit: [['Distance', 0, 0.03, 0.008], ['Spin', 0, 5, 1.3]],
+  neonedges: [['Thickness', 0.5, 4, 1.5], ['Glow', 0.5, 4, 2.2], ['Hue speed', 0, 1, 0.15]],
+  halftone: [['Dot size', 4, 24, 9]], dither: [['Pixel size', 1, 8, 3]], ascii: [['Cell size', 5, 20, 8]],
+  mosaic: [['Cells', 6, 40, 16]], hexpixels: [['Cells', 6, 50, 18]], ledmatrix: [['Cell size', 4, 24, 10]],
+  cel: [['Levels', 2, 8, 4], ['Outline', 0, 1, 1]], duoflow: [['Speed', 0, 1, 0.05], ['Hue offset', 0, 1, 0.45]],
+  wiregrid: [['Cell size', 8, 80, 26], ['Line width', 0.02, 0.3, 0.06]], zoomblur: [['Amount', 0, 0.03, 0.014]],
+  pointillize: [['Cells', 10, 80, 34], ['Dot size', 0.2, 0.5, 0.42]], huecycle: [['Speed', 0, 4, 0.9], ['Saturation', 0, 2, 1.3]],
+  bloom: [['Threshold', 0, 1, 0.55], ['Gain', 0, 6, 2.4], ['Radius', 4, 40, 14]],
+  echo: [['Decay', 0.8, 1, 0.94], ['Hue shift', 0, 0.3, 0.07]], fbtunnel: [['Decay', 0.8, 1, 0.97], ['Rotation', -0.05, 0.05, 0.015], ['Zoom', 0.95, 1, 0.985]],
+};
+for (const e of EFFECTS) e.p = PARAMS[e.id] || [];

@@ -35,7 +35,9 @@ export function createMask(frame, onChange) {
     octx.putImageData(img, 0, 0);
   }
 
-  function changed() { api.active = true; api.version++; refreshOverlay(); onChange && onChange(); }
+  let ovPending = false;
+  const scheduleOverlay = () => { if (ovPending) return; ovPending = true; requestAnimationFrame(() => { ovPending = false; refreshOverlay(); }); };
+  function changed() { api.active = true; api.version++; scheduleOverlay(); onChange && onChange(); }
 
   // Soft disc at (cx, cy), radii in CSS px, drawn in normalized mask space
   function disc(cx, cy, rx, ry) {

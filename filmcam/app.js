@@ -5,7 +5,7 @@ import { VERT, FRAG, FRAG_FB, SLIDERS, EFFECTS } from './shader.js';
 import { createMask } from './mask.js';
 
 // Состояние = будущий пресет (этап 6 просто сохранит этот объект в JSON)
-const state = { effect: 'bleach', eco: false }; // effect: id from EFFECTS or 'none'
+const state = { effect: 'bleach', eco: false, params: {} }; // effect: id from EFFECTS or 'none'
 // Настройки камеры (не входят в пресет)
 const cam = { facing: 'environment', zoom: 1, ar: '9:16', timer: 0, ultraId: null, mainId: {}, kind: 'main', busy: false };
 for (const s of SLIDERS) state[s[0]] = s[4];
@@ -21,6 +21,21 @@ const mask = createMask(document.getElementById('frame'), () => { maskDirty = tr
 let stream = null, running = false, wakeLock = null;
 let quality = { tiers: [1080, 720, 540], i: 0 };
 let lastDraw = 0, skipped = 0, frames = 0, renderMs = 0, lastPresented = 0, fps = 0, fpsT = 0, fpsN = 0;
+
+// Per-effect knob values (state.params[id]), defaults from EFFECTS[].p
+function paramsOf(id) {
+  if (!state.params[id]) state.params[id] = ((EFFECTS.find((e) => e.id === id) || { p: [] }).p).map((k) => k[3]);
+  return state.params[id];
+}
+let fxCache = { id: null, def: null };
+function curFx() {
+  if (fxCache.id !== state.effect) fxCache = { id: state.effect, def: EFFECTS.find((e) => e.id === state.effect) || null };
+  return fxCache.def;
+}
+// Skip redundant uniform uploads
+const uCache = new Map();
+function u1(loc, v) { if (uCache.get(loc) !== v) { uCache.set(loc, v); gl.uniform1f(loc, v); } }
+let texW = 0, texH = 0;
 
 function showStatus(msg) {
   const el = $('status');
@@ -166,13 +181,17 @@ function fitFrame() {
 new ResizeObserver(fitFrame).observe(document.getElementById('vp'));
 
 function draw(forPhoto = false) {
-  const fx = EFFECTS.find((e) => e.id === state.effect);
+  const fx = curFx();
   const useFb = !!(fx && fx.fb) && !forPhoto;
   gl.useProgram(prog);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+  if (video.videoWidth !== texW || video.videoHeight !== texH) {
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+    texW = video.videoWidth; texH = video.videoHeight;
+  } else {
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);   // no realloc per frame
+  }
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, noiseTex);
   gl.activeTexture(gl.TEXTURE2);
@@ -186,11 +205,13 @@ function draw(forPhoto = false) {
   gl.uniform2f(U.uRes, canvas.width, canvas.height);
   gl.uniform2f(U.uGrainOff, Math.random(), Math.random());
   gl.uniform2f(U.uCrop, ...cropFrac());
-  gl.uniform1f(U.uMirror, cam.facing === 'user' ? 1 : 0);
-  gl.uniform1f(U.uEffect, fx ? fx.n : 0);
-  gl.uniform1f(U.uMaskOn, mask.active ? 1 : 0);
-  gl.uniform1f(U.uTime, (performance.now() / 1000) % 1000);
-  for (const s of SLIDERS) gl.uniform1f(U[s[5]], state[s[0]]);
+  u1(U.uMirror, cam.facing === 'user' ? 1 : 0);
+  u1(U.uEffect, fx ? fx.n : 0);
+  u1(U.uMaskOn, mask.active ? 1 : 0);
+  u1(U.uTime, (performance.now() / 1000) % 1000);
+  const kp = fx ? paramsOf(fx.id) : [];
+  gl.uniform4f(U.uP, kp[0] || 0, kp[1] || 0, kp[2] || 0, kp[3] || 0);
+  for (const s of SLIDERS) u1(U[s[5]], state[s[0]]);
 
   if (!useFb) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -214,6 +235,7 @@ function draw(forPhoto = false) {
   gl.uniform1i(Ufb.uCur, 0); gl.uniform1i(Ufb.uPrev, 1);
   gl.uniform1f(Ufb.uAspect, w / h);
   gl.uniform1f(Ufb.uMode, fx.fbMode);
+  gl.uniform4f(Ufb.uP, kp[0] || 0, kp[1] || 0, kp[2] || 0, kp[3] || 0);
   gl.uniform1f(Ufb.uReset, fbReset ? 1 : 0);
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb.fbo[next]);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -344,11 +366,11 @@ function syncUI() {
   const mark = (seg, attr, val) => document.querySelectorAll(`#${seg} button`).forEach((b) => {
     b.classList.toggle('on', String(b.dataset[attr]) === String(val));
   });
-  mark('zoomSeg', 'zoom', cam.zoom); mark('camSeg', 'cam', cam.facing);
-  mark('arSeg', 'ar', cam.ar); mark('timerSeg', 't', cam.timer);
+  mark('zoomSeg', 'zoom', cam.zoom);
+  $('arBtn').textContent = cam.ar; $('timerBtn').textContent = cam.timer ? cam.timer + 'S' : 'OFF'; $('camBtn').textContent = cam.facing === 'user' ? 'FRONT' : 'BACK';
   const z05 = document.querySelector('#zoomSeg [data-zoom="0.5"]');
   z05.disabled = !cam.ultraId || cam.facing !== 'environment';
-  document.querySelectorAll('#zoomSeg button, #camSeg button').forEach((b) => { if (cam.busy) b.disabled = true; else if (b !== z05) b.disabled = false; });
+  document.querySelectorAll('#zoomSeg button, #camBtn').forEach((b) => { if (cam.busy) b.disabled = true; else if (b !== z05) b.disabled = false; });
   if (cam.busy) z05.disabled = true;
   const [cx] = cropFrac();
   $('readout').textContent = `${cam.facing === 'user' ? 'FRONT' : 'BACK'} · ${cam.zoom}× · ${cam.ar}${cam.timer ? ' · TIMER ' + cam.timer + 'S' : ''}${cx ? '' : ''}`;
@@ -477,12 +499,16 @@ function buildSliders() {
   }
 }
 
+const effectName = (id) => (EFFECTS.find((e) => e.id === id) || { name: 'Original' }).name;
+
+function select(id) {
+  state.effect = id;
+  document.querySelectorAll('#panel .chip[data-fx]').forEach((c) => c.classList.toggle('on', c.dataset.fx === id));
+  buildKnobs();
+}
+
 function buildEffects() {
   const lists = { presets: $('fxPresets'), touch: $('fxTouch') };
-  const select = (id) => {
-    state.effect = id;
-    document.querySelectorAll('#panel .chip').forEach((c) => c.classList.toggle('on', c.dataset.fx === id));
-  };
   const add = (box, id, name) => {
     const b = document.createElement('button');
     b.className = 'chip' + (id === state.effect ? ' on' : ''); b.textContent = name; b.dataset.fx = id;
@@ -502,14 +528,72 @@ function buildEffects() {
   }
 }
 
+// ---------- Knobs: edit the selected effect ----------
+function buildKnobs() {
+  const fx = curFx(), box = $('knobs');
+  box.innerHTML = '';
+  const show = !!(fx && fx.p.length) && ['presets', 'touch', 'my'].includes(curTab);
+  box.hidden = !show;
+  if (!show) return;
+  const vals = paramsOf(fx.id);
+  box.innerHTML = `<div class="kh"><span>TUNE · ${fx.name}</span><button id="kReset" class="link">RESET</button></div>`;
+  fx.p.forEach(([label, min, max, def], i) => {
+    const whole = Number.isInteger(def) && Number.isInteger(min) && max - min >= 6;
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<label for="k${i}">${label}</label><input type="range" id="k${i}" min="${min}" max="${max}" step="${whole ? 1 : (max - min) / 200}"><span class="v"></span>`;
+    const input = row.querySelector('input'), val = row.querySelector('.v');
+    const show2 = () => { input.value = vals[i]; val.textContent = whole ? vals[i] : (+vals[i]).toFixed(Math.abs(max - min) < 0.2 ? 3 : 2); };
+    input.addEventListener('input', () => { vals[i] = parseFloat(input.value); show2(); });
+    show2(); box.appendChild(row);
+  });
+  $('kReset').addEventListener('click', () => { state.params[fx.id] = fx.p.map((k) => k[3]); buildKnobs(); });
+}
+
+// ---------- My presets (saved in this browser) ----------
+const LS_KEY = 'filmcam.presets.v1';
+let myPresets = [];
+try { myPresets = JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { myPresets = []; }
+const persist = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(myPresets)); } catch { /* private mode */ } };
+
+function syncSliders() { document.querySelectorAll('#sliders .row').forEach((r) => r._sync()); }
+
+function buildMy() {
+  const box = $('myList'); box.innerHTML = '';
+  if (!myPresets.length) { box.innerHTML = '<span class="sep">Nothing saved yet</span>'; return; }
+  myPresets.forEach((p, i) => {
+    const wrap = document.createElement('span'); wrap.className = 'chip my';
+    const b = document.createElement('button'); b.textContent = p.name;
+    b.addEventListener('click', () => applyPreset(p));
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.setAttribute('aria-label', 'Delete ' + p.name);
+    x.addEventListener('click', () => { myPresets.splice(i, 1); persist(); buildMy(); });
+    wrap.append(b, x); box.appendChild(wrap);
+  });
+}
+
+function applyPreset(p) {
+  for (const s of SLIDERS) if (p.sliders && s[0] in p.sliders) state[s[0]] = p.sliders[s[0]];
+  if (p.params) state.params[p.effect] = [...p.params];
+  syncSliders(); select(p.effect);
+  $('pName').value = p.name;
+}
+
+$('pSave').addEventListener('click', () => {
+  const fx = curFx();
+  const name = ($('pName').value.trim() || `${effectName(state.effect)} ${myPresets.length + 1}`).slice(0, 24);
+  const entry = { name, effect: state.effect, params: fx ? [...paramsOf(fx.id)] : [], sliders: Object.fromEntries(SLIDERS.map((s) => [s[0], state[s[0]]])) };
+  const i = myPresets.findIndex((p) => p.name === name);
+  if (i >= 0) myPresets[i] = entry; else myPresets.push(entry);
+  persist(); buildMy(); $('pName').value = name;
+});
+
 // ---------- Drawer tabs ----------
 let curTab = 'presets';
 function syncMaskMode() { mask.setEnabled(!$('panel').hidden && curTab === 'mask'); }
 function setTab(t) {
   curTab = t;
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  for (const n of ['presets', 'touch', 'adjust', 'mask']) $('pane-' + n).hidden = n !== t;
-  syncMaskMode();
+  for (const n of ['presets', 'touch', 'my', 'adjust', 'mask']) $('pane-' + n).hidden = n !== t;
+  buildKnobs(); syncMaskMode();
 }
 document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -555,6 +639,7 @@ async function start() {
     initGL();
     buildSliders();
     buildEffects();
+    buildMy();
     await openCamera();
     await requestWakeLock();
     $('start').hidden = true;
@@ -585,12 +670,13 @@ $('shutter').addEventListener('click', () => {
   }, 1000);
 });
 document.querySelectorAll('#zoomSeg button').forEach((b) => b.addEventListener('click', () => setZoom(parseFloat(b.dataset.zoom))));
-document.querySelectorAll('#camSeg button').forEach((b) => b.addEventListener('click', () => setFacing(b.dataset.cam)));
-document.querySelectorAll('#arSeg button').forEach((b) => b.addEventListener('click', () => setAspect(b.dataset.ar)));
-document.querySelectorAll('#timerSeg button').forEach((b) => b.addEventListener('click', () => { cam.timer = parseInt(b.dataset.t, 10); syncUI(); }));
+const next = (list, v) => list[(list.indexOf(v) + 1) % list.length];
+$('camBtn').addEventListener('click', () => setFacing(cam.facing === 'user' ? 'environment' : 'user'));
+$('arBtn').addEventListener('click', () => setAspect(next(['9:16', '4:3', '1:1'], cam.ar)));
+$('timerBtn').addEventListener('click', () => { cam.timer = next([0, 3, 10], cam.timer); syncUI(); });
 $('panelBtn').addEventListener('click', () => { $('panel').hidden = !$('panel').hidden; $('panelBtn').classList.toggle('on', !$('panel').hidden); syncMaskMode(); });
 $('eco').addEventListener('change', (e) => { state.eco = e.target.checked; });
 $('reset').addEventListener('click', resetSliders);
 
 // Для автотестов
-window.__filmcam = { state, cam, mask, setZoom, setAspect, setFacing, get quality() { return quality; } };
+window.__filmcam = { state, cam, mask, paramsOf, select, setZoom, setAspect, setFacing, get quality() { return quality; } };
